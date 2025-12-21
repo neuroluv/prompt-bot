@@ -68,14 +68,8 @@ export class BotUpdate {
       `${promptFileName} промптов для фото Нейролюб.pdf`,
     );
 
-    await ctx.replyWithPhoto(
-      Input.fromLocalFile(this.botService.getPhotoFile('cat.jpeg')),
-      {
-        caption: mainMessages.successMessage,
-      },
-    );
-
     await ctx.replyWithDocument(file, {
+      caption: mainMessages.successMessage,
       reply_markup: {
         inline_keyboard: goToHomeKeyboard(),
       },

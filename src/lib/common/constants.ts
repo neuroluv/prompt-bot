@@ -21,7 +21,7 @@ export const CHANNELS_LINKS: ILabelValue[] = [
   // },
   // {
   //   label: 'Ламповый код | Черновик',
-  //   value: '-lampcode_chernovik',
+  //   value: 'lampcode_chernovik',
   // },
 ];
 export const GOOD_MEMBER_STATUSES = ['creator', 'administrator', 'member'];

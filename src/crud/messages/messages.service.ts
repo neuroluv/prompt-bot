@@ -36,10 +36,10 @@ export class MessagesService {
         reply_markup: markup,
       });
     } catch (error) {
-      console.log(
+      this.loggerService.error(
         `Пользователь ${chatId} не получил сообщения из за блокировки бота.\n\n${error}`,
+        error,
       );
-      this.loggerService.error(error, MessagesService.name);
     }
 
     return;
@@ -56,7 +56,10 @@ export class MessagesService {
         reply_markup: markup,
       });
     } catch (error) {
-      this.loggerService.error(error, MessagesService.name);
+      this.loggerService.error(
+        `Не получилось отправить сообщение в канал ${channelSlug}`,
+        error,
+      );
     }
 
     return;

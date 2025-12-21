@@ -5,10 +5,7 @@ import { Markup } from 'telegraf';
 export const promptKeyboard = (channel: ILabelValue) => {
   const resultKeyboard = [
     [
-      Markup.button.url(
-        `${emojis.robot} ${channel.label}`,
-        `https://t.me/${channel.value}`,
-      ),
+      Markup.button.url(channel.label, `https://t.me/${channel.value}`),
       Markup.button.callback(`${emojis.robot} 50 промптов`, 'download-file-50'),
     ],
     [
