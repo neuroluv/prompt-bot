@@ -18,6 +18,12 @@ export const promptKeyboard = (channel: ILabelValue) => {
         'download-file-107',
       ),
     ],
+    [
+      Markup.button.callback(
+        `${emojis.lightning} Как создать свою AI модель`,
+        'download-file-ai_model_guide',
+      ),
+    ],
   ];
 
   return resultKeyboard;

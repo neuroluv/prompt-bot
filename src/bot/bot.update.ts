@@ -20,6 +20,7 @@ const myPromptFiles = {
   '50': join(__dirname, '..', '..', 'files', `prompts50.pdf`),
   '100': join(__dirname, '..', '..', 'files', `prompts100.pdf`),
   '107': join(__dirname, '..', '..', 'files', `prompts107.pdf`),
+  ai_model_guide: join(__dirname, '..', '..', 'files', `ai_model_guide.pdf`),
 };
 
 @Update()
@@ -63,6 +64,37 @@ export class BotUpdate {
         inline_keyboard: downloadKeyboard(promptsCount),
       },
     });
+    return;
+  }
+
+  @CheckSubscription()
+  @Action('download-file-ai_model_guide')
+  async downloadFileGuide(@Ctx() ctx: Context) {
+    const promptFileName = getValueFromAction(ctx, 2, '-');
+    const file = Input.fromLocalFile(
+      myPromptFiles[promptFileName],
+      `Как создать свою AI модель НейроЛюб.pdf`,
+    );
+
+    const loadingMessage = await ctx.reply(`${emojis.refresh} Загрузка...`);
+
+    await ctx.replyWithDocument(file, {
+      caption: mainMessages.successMessage,
+      reply_markup: {
+        inline_keyboard: goToHomeKeyboard(),
+      },
+    });
+
+    await ctx.deleteMessage(loadingMessage.message_id);
+
+    // Сообщение для ведения статистики в админ канал
+    const downloadMessage = `${emojis.checkmark} Скачан файл – Гайд по созданию AI модели\n${emojis.user} ${ctx.from.first_name} – ${getUserLink(ctx.from.id, ctx.from.username)}\n${emojis.calendar} ${new Date().toLocaleString('ru')}`;
+
+    // Отправка в админ канал для ведения статистики
+    await this.messageService.sendMessageToChannel(
+      getNormalChatId(CHANNELS_LINKS[1].value),
+      downloadMessage,
+    );
     return;
   }
 
