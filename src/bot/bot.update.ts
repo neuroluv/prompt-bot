@@ -119,7 +119,7 @@ export class BotUpdate {
     await ctx.deleteMessage(loadingMessage.message_id);
 
     // Сообщение для ведения статистики в админ канал
-    const downloadMessage = `${emojis.checkmark} Скачан файл – ${promptFileName} промптов\n${emojis.user} ${ctx.from.first_name} (${getUserLink(ctx.from.id, ctx.from.username)})\n${emojis.calendar} ${new Date().toLocaleString('ru')}`;
+    const downloadMessage = `${emojis.checkmark} Скачан файл – ${promptFileName} промптов\n${emojis.user} ${ctx.from.first_name} – ${getUserLink(ctx.from.id, ctx.from.username)}\n${emojis.calendar} ${new Date().toLocaleString('ru')}`;
 
     // Отправка в админ канал для ведения статистики
     await this.messageService.sendMessageToChannel(
