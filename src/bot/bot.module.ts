@@ -2,6 +2,7 @@ import { SystemLoggerModule } from '@/config';
 import { ENV_NAMES } from '@lib/common/constants';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CmsModule } from 'cms/cms.module';
 import { ChannelModule, ChannelService, MessagesModule } from 'crud';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { session } from 'telegraf';
@@ -25,6 +26,7 @@ import { BotUpdate } from './bot.update';
     }),
     SystemLoggerModule,
     MessagesModule,
+    CmsModule,
   ],
   providers: [BotService, BotUpdate, ChannelService],
   exports: [BotService],
