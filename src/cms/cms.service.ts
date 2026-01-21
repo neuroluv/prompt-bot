@@ -86,12 +86,17 @@ export class CmsService {
     return response.data.data[0];
   }
 
-  async createPromptFileStats(userId: bigint, fileId: number) {
+  async createPromptFileStats(
+    userId: bigint,
+    fileId: number,
+    file_title: string,
+  ): Promise<PromptFileDownload> {
     const res = await this.http.post<DirectusItemResponse<PromptFileDownload>>(
       '/items/prompt_file_downloads',
       {
         user: userId,
         prompt_file: fileId,
+        file_title,
       },
     );
 

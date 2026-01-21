@@ -91,7 +91,11 @@ export class BotUpdate {
     await ctx.deleteMessage(loadingMessage.message_id);
 
     const user = await this.cms.upsertUser(ctx);
-    await this.cms.createPromptFileStats(user.id, promptFile.id);
+    await this.cms.createPromptFileStats(
+      user.id,
+      promptFile.id,
+      promptFile.title,
+    );
     return;
   }
 }
