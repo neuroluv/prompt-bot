@@ -4,12 +4,14 @@ import axios, { type AxiosInstance } from 'axios';
 import { SystemLoggerService } from 'config';
 import type { DirectusItemResponse, DirectusListResponse } from 'lib/types';
 import { PromptFile, PromptFileDownload } from 'lib/types/prompt-files';
-import type { User } from 'lib/types/user';
+import type { IUser } from 'lib/types/user';
 import type { Context } from 'telegraf';
+import * as qs from 'qs';
 
 @Injectable()
 export class CmsService {
-  private API_URL: string;
+  private CMS_URL: string;
+  private CMS_TOKEN: string;
   STATIC_FILES_URL: string;
   http: AxiosInstance;
 
@@ -18,13 +20,36 @@ export class CmsService {
 
     private readonly logger: SystemLoggerService,
   ) {
-    this.API_URL = this.configService.getOrThrow<string>('CMS_URL');
-    this.STATIC_FILES_URL = `${this.API_URL}/assets`;
+    this.CMS_URL = this.configService.getOrThrow<string>('CMS_URL');
+    this.CMS_TOKEN = this.configService.getOrThrow<string>('CMS_TOKEN');
+    this.STATIC_FILES_URL = `${this.CMS_URL}/assets`;
 
     this.http = axios.create({
-      baseURL: this.API_URL,
+      baseURL: this.CMS_URL,
       timeout: 15000,
+      headers: { Authorization: `Bearer ${this.CMS_TOKEN}` },
+      paramsSerializer: {
+        serialize: (params) => qs.stringify(params, { encodeValuesOnly: true }),
+      },
     });
+
+    this.http.interceptors.response.use(
+      (res) => res,
+      (err) => {
+        const status = err?.response?.status;
+        const data = err?.response?.data;
+        const method = err?.config?.method?.toUpperCase();
+        const url = err?.config?.baseURL
+          ? `${err.config.baseURL}${err.config.url}`
+          : err?.config?.url;
+
+        this.logger.error(
+          `[directus] ${method} ${url} -> ${status} ${JSON.stringify(data)}`,
+        );
+
+        throw err;
+      },
+    );
   }
 
   async getAllPromptFiles(): Promise<PromptFile[]> {
@@ -34,7 +59,7 @@ export class CmsService {
     return response.data.data;
   }
 
-  async upsertUser(ctx: Context): Promise<User> {
+  async upsertUser(ctx: Context): Promise<IUser> {
     const telegramId = ctx.from?.id;
     if (!telegramId) throw new Error('ctx.from is empty');
 
@@ -49,7 +74,7 @@ export class CmsService {
     };
 
     // 1) ищем пользователя
-    const found = await this.http.get<DirectusListResponse<User>>(
+    const found = await this.http.get<DirectusListResponse<IUser>>(
       '/items/users',
       {
         params: {
@@ -63,7 +88,7 @@ export class CmsService {
 
     // 2) обновляем по ID
     if (existing?.id) {
-      const updated = await this.http.patch<DirectusItemResponse<User>>(
+      const updated = await this.http.patch<DirectusItemResponse<IUser>>(
         `/items/users/${existing.id}`,
         userData,
       );
@@ -71,7 +96,7 @@ export class CmsService {
     }
 
     // 3) создаём
-    const created = await this.http.post<DirectusItemResponse<User>>(
+    const created = await this.http.post<DirectusItemResponse<IUser>>(
       '/items/users',
       userData,
     );
@@ -80,7 +105,7 @@ export class CmsService {
 
   async getPromptFileByName(fileName: string): Promise<PromptFile> {
     const response = await axios.get<{ data: PromptFile[] }>(
-      `${this.API_URL}/items/prompt_files?filter[system_name][_eq]=${fileName}&fields=*,file.*`,
+      `${this.CMS_URL}/items/prompt_files?filter[system_name][_eq]=${fileName}&fields=*,file.*`,
     );
 
     return response.data.data[0];
@@ -101,5 +126,45 @@ export class CmsService {
     );
 
     return res.data.data;
+  }
+
+  async getDirectusFileBuffer(fileId: string): Promise<Buffer> {
+    const res = await this.http.get<ArrayBuffer>(`/assets/${fileId}`, {
+      responseType: 'arraybuffer',
+      params: { download: 1 },
+    });
+    return Buffer.from(res.data);
+  }
+
+  /**
+   * Получить пользователей по массиву id (Directus users.id)
+   * Возвращает минимум полей, нужных для рассылки.
+   */
+  async getUsersByIds(ids: number[]): Promise<IUser[]> {
+    const clean = (ids ?? []).map(Number).filter((x) => Number.isFinite(x));
+    if (!clean.length) return [];
+
+    const res = await this.http.get<DirectusListResponse<IUser>>(
+      '/items/users',
+      {
+        params: {
+          fields: ['id', 'telegram_id', 'is_premium', 'is_blocked_the_bot'],
+          filter: { id: { _in: clean } },
+          limit: clean.length,
+        },
+      },
+    );
+
+    return res.data.data ?? [];
+  }
+
+  /**
+   * Помечает пользователя как заблокировавшего бота.
+   * Вызываем при ошибках Telegram: "bot was blocked by the user", "chat not found" и т.п.
+   */
+  async markUserBlocked(userId: number) {
+    await this.http.patch(`/items/users/${userId}`, {
+      is_blocked_the_bot: true,
+    });
   }
 }

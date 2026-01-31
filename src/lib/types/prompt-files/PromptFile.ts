@@ -1,4 +1,4 @@
-import type { CmsFile } from '../CmsFile';
+import type { IFile } from '../directus/IFile';
 
 export interface PromptFile {
   id: number;
@@ -9,5 +9,5 @@ export interface PromptFile {
   user_updated: string;
   date_updated: string;
   title: string;
-  file: CmsFile;
+  file: IFile;
 }

@@ -3,8 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { BotModule } from 'bot';
 import { MessagesModule } from 'crud';
 import { ENV_NAMES } from 'lib/common';
-import { ChannelModule } from './crud/channel/channel.module';
 import { CmsModule } from './cms/cms.module';
+import { ChannelModule } from './crud/channel/channel.module';
+import { MailingModule } from './crud/mailing/mailing.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CmsModule } from './cms/cms.module';
     ChannelModule,
     MessagesModule,
     CmsModule,
+    MailingModule,
   ],
   controllers: [],
   providers: [],

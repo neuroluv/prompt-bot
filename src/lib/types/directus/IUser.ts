@@ -1,5 +1,10 @@
-export interface IUser {
-  id: bigint;
+export interface IUser extends IAuthUser {
+  id: number;
+  last_seen_date?: string;
+}
+
+export interface IAuthUser {
+  telegram_id: number;
   first_name: string;
   last_name?: string;
   username?: string;
@@ -7,5 +12,4 @@ export interface IUser {
   is_bot: boolean;
   is_premium: boolean;
   photo_url?: string;
-  is_blocked_the_bot?: boolean;
 }
