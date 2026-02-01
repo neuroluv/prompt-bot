@@ -67,7 +67,7 @@ export class CmsService {
       telegram_id: telegramId,
       first_name: ctx.from.first_name ?? null,
       last_name: ctx.from.last_name ?? null,
-      username: ctx.from.username ? `@${ctx.from.username}` : null,
+      username: ctx.from.username ?? null,
       is_bot: Boolean(ctx.from.is_bot),
       is_premium: Boolean((ctx.from as any).is_premium),
       language_code: ctx.from.language_code ?? null,
