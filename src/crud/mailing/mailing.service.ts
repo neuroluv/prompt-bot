@@ -1,13 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { BotService } from 'bot';
 import Bottleneck from 'bottleneck';
 import { CmsService } from 'cms/cms.service';
-import { BotService } from 'bot';
 import { SystemLoggerService } from 'config';
-import type {
-  MailingPayload,
-  MailingLogCreate,
-  Mailing,
-} from 'lib/types/mailing';
 import {
   buildInlineKeyboard,
   isBlockedError,
@@ -15,6 +10,11 @@ import {
   Normalize,
   sleep,
 } from 'lib/helpers';
+import type {
+  Mailing,
+  MailingLogCreate,
+  MailingPayload,
+} from 'lib/types/mailing';
 
 @Injectable()
 export class MailingService {
@@ -132,7 +132,7 @@ export class MailingService {
         duration_sec: durationSec,
       });
 
-      this.logger.log(
+      this.logger.debug(
         `[mailing] done id=${mailingId} planned=${target.totalPlanned} sent=${sent} failed=${failed}`,
       );
     } catch (e: any) {
@@ -233,7 +233,7 @@ export class MailingService {
     // query-based modes (all/premium/filter)
     const base: any = {
       telegram_id: { _nnull: true },
-      is_blocked: { _neq: true },
+      is_blocked_the_bot: { _neq: true },
     };
 
     if (mode === 'premium') {
