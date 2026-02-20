@@ -1,21 +1,23 @@
 import { SystemLoggerModule } from '@/config';
 import { ENV_NAMES } from '@lib/common/constants';
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { CmsModule } from 'cms/cms.module';
-import { ChannelModule, ChannelService, MessagesModule } from 'crud';
+import { CmsModule } from 'cms';
+import {
+  ChannelModule,
+  ChannelService,
+  MessagesModule,
+  PaymentModule,
+} from 'crud';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { session } from 'telegraf';
 import { BotService } from './bot.service';
 import { BotUpdate } from './bot.update';
+import { SubscriptionModule } from 'crud/subscription';
 
 @Module({
   imports: [
     ChannelModule,
-    ConfigModule.forRoot({
-      envFilePath: ENV_NAMES.ENV_PATH(process.env.NODE_ENV),
-      isGlobal: true,
-    }),
     TelegrafModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -27,6 +29,8 @@ import { BotUpdate } from './bot.update';
     SystemLoggerModule,
     MessagesModule,
     CmsModule,
+    SubscriptionModule,
+    forwardRef(() => PaymentModule),
   ],
   providers: [BotService, BotUpdate, ChannelService],
   exports: [BotService],

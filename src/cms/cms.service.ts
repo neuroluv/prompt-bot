@@ -1,3 +1,12 @@
+import {
+  type DirectusClient,
+  type RestClient,
+  type StaticTokenClient,
+  createDirectus,
+  readItems,
+  rest,
+  staticToken,
+} from '@directus/sdk';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { type AxiosInstance } from 'axios';
@@ -5,8 +14,10 @@ import { SystemLoggerService } from 'config';
 import type { DirectusItemResponse, DirectusListResponse } from 'lib/types';
 import { PromptFile, PromptFileDownload } from 'lib/types/prompt-files';
 import type { IUser } from 'lib/types/user';
-import type { Context } from 'telegraf';
+import type { IUser as IDirectusUser } from 'lib/types/directus';
 import * as qs from 'qs';
+import type { Context } from 'telegraf';
+import { CmsSchema } from './schema';
 
 @Injectable()
 export class CmsService {
@@ -14,6 +25,9 @@ export class CmsService {
   private CMS_TOKEN: string;
   STATIC_FILES_URL: string;
   http: AxiosInstance;
+  directus: DirectusClient<CmsSchema> &
+    StaticTokenClient<CmsSchema> &
+    RestClient<CmsSchema>;
 
   constructor(
     private readonly configService: ConfigService,
@@ -23,6 +37,9 @@ export class CmsService {
     this.CMS_URL = this.configService.getOrThrow<string>('CMS_URL');
     this.CMS_TOKEN = this.configService.getOrThrow<string>('CMS_TOKEN');
     this.STATIC_FILES_URL = `${this.CMS_URL}/assets`;
+    this.directus = createDirectus<CmsSchema>(this.CMS_URL)
+      .with(staticToken(this.CMS_TOKEN))
+      .with(rest());
 
     this.http = axios.create({
       baseURL: this.CMS_URL,
@@ -134,6 +151,18 @@ export class CmsService {
       params: { download: 1 },
     });
     return Buffer.from(res.data);
+  }
+
+  /**
+   * Получить пользователя по телеграм id (Directus user.id)
+   */
+  async getUserByTelegramId(telegramId: number): Promise<IDirectusUser> {
+    const [user] = await this.directus.request(
+      readItems('users', {
+        filter: { telegram_id: { _eq: telegramId } },
+      }),
+    );
+    return user;
   }
 
   /**

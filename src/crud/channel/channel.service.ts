@@ -28,7 +28,7 @@ export class ChannelService {
             join(__dirname, '..', '..', '..', 'files', 'error_cat.jpeg'),
           ),
           {
-            caption: mainMessages.subscribeMessage,
+            caption: mainMessages.needSubscribe,
             reply_markup: {
               inline_keyboard: channelsKeyboard([CHANNELS_LINKS[0]]),
             },

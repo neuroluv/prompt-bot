@@ -5,7 +5,7 @@ import type { CallbackQuery } from 'telegraf/types';
 export const getValueFromAction = (
   ctx: Context | WizardContext | SceneContext,
   index = 1,
-  separator = '|',
+  separator = '-',
 ) => {
   return (ctx.callbackQuery as CallbackQuery.DataQuery).data.split(separator)[
     index

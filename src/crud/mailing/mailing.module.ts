@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { MailingService } from './mailing.service';
-import { MailingController } from './mailing.controller';
-import { CmsModule } from 'cms/cms.module';
 import { BotModule } from 'bot';
+import { CmsModule } from 'cms';
 import { SystemLoggerService } from 'config';
+import { MailingController } from './mailing.controller';
+import { MailingService } from './mailing.service';
 
 @Module({
   imports: [CmsModule, BotModule],

@@ -1,28 +1,14 @@
 import type { ILabelValue } from 'lib/types';
-import { emojis } from 'lib/utils';
 
 // Global constants
 export const CHATS = [785206267];
+export const SUPPORT_USERNAME = 'ker4ik13';
 export const CHANNELS_LINKS: ILabelValue[] = [
   // Production mode
   {
-    label: `${emojis.robot} Нейролюб | Нейросети`,
+    label: `Нейролюб | Нейросети`,
     value: 'NeuroLuv',
   },
-  {
-    // Черновик нейролюба для статистики
-    label: 'Нейролюб | Нейросети',
-    value: '-1003670144553',
-  },
-  // Dev mode
-  // {
-  //   label: 'Ламповый код',
-  //   value: 'lampcode_chernovik',
-  // },
-  // {
-  //   label: 'Ламповый код | Черновик',
-  //   value: 'lampcode_chernovik',
-  // },
 ];
 export const GOOD_MEMBER_STATUSES = ['creator', 'administrator', 'member'];
 

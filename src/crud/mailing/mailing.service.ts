@@ -276,10 +276,7 @@ export class MailingService {
 
   // Directus interactions
   private async patchMailing(id: number, patch: Partial<Mailing>) {
-    const response = await this.cms.http.patch(
-      `/items/tg_mailing/${id}`,
-      patch,
-    );
+    await this.cms.http.patch(`/items/tg_mailing/${id}`, patch);
   }
 
   private async createMailingLog(payload: MailingLogCreate) {
