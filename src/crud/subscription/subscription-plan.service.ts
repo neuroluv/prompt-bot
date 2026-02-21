@@ -17,11 +17,13 @@ export class SubscriptionPlanService {
     );
   }
 
-  async getChannelBySlug(currency: string): Promise<ISubscriptionPlan | null> {
+  async getPlanBySlug(currency: string): Promise<ISubscriptionPlan | null> {
     const [result] = await this.cms.directus.request(
       readItems('subscription_plans', {
         filter: {
-          slug: { _eq: `${this.privateChannelSlug}${currency.toLowerCase()}` },
+          slug: {
+            _eq: `${this.privateChannelSlug}${currency.toLowerCase()}`,
+          },
         },
       }),
     );
@@ -29,13 +31,42 @@ export class SubscriptionPlanService {
     return result;
   }
 
-  async getChannelsByIncludeSlug(slug: string): Promise<ISubscriptionPlan[]> {
+  async getPlanssByIncludeSlug(slug: string): Promise<ISubscriptionPlan[]> {
     const result = await this.cms.directus.request(
       readItems('subscription_plans', {
         filter: {
-          slug: { _contains: slug },
+          _and: [
+            {
+              slug: { _contains: slug },
+            },
+            {
+              status: { _eq: 'published' },
+            },
+          ],
         },
         sort: ['date_created'],
+      }),
+    );
+
+    return result;
+  }
+
+  async getPlanByPriceAndCurrency(
+    price: number,
+    currency: string,
+  ): Promise<ISubscriptionPlan> {
+    const [result] = await this.cms.directus.request(
+      readItems('subscription_plans', {
+        filter: {
+          _and: [
+            {
+              price: { _eq: price },
+            },
+            {
+              currency: { _eq: currency },
+            },
+          ],
+        },
       }),
     );
 

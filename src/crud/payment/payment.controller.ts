@@ -15,11 +15,6 @@ export class PaymentController {
     this.logger.setContext(PaymentController.name);
   }
 
-  @Post('neuroluv-club')
-  async createPayment(telegramId: number | bigint) {
-    return this.yookassaPaymentService.create(telegramId);
-  }
-
   @Post('notification')
   @HttpCode(200)
   async getNotifications(@Body() body: YooKassaNotification<unknown>) {

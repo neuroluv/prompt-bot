@@ -64,10 +64,9 @@ export class BotUpdate {
   @Action('neuroluv_club')
   @CheckSubscription()
   async prePayPrivateChannel(@Ctx() ctx: SceneContext) {
-    const channels =
-      await this.subscriptionPlanService.getChannelsByIncludeSlug(
-        this.subscriptionPlanService.privateChannelSlug,
-      );
+    const channels = await this.subscriptionPlanService.getPlanssByIncludeSlug(
+      this.subscriptionPlanService.privateChannelSlug,
+    );
 
     await ctx.reply(payMessages.prePay, {
       parse_mode: 'HTML',
@@ -89,31 +88,43 @@ export class BotUpdate {
 
     const isFiat = isFiatCurrency(currency);
     let createdPayment;
+    const plan = await this.subscriptionPlanService.getPlanByPriceAndCurrency(
+      +price,
+      currency,
+    );
+    try {
+      if (isFiat) {
+        createdPayment = await this.yookassaPaymentService.create(
+          ctx.from.id ? ctx.from.id : ctx.callbackQuery.from.id,
+          plan,
+        );
+      } else {
+        createdPayment = await this.cryptoPaymentService.create(
+          ctx.from.id ? ctx.from.id : ctx.callbackQuery.from.id,
+          plan,
+        );
+      }
 
-    if (isFiat) {
-      createdPayment = await this.yookassaPaymentService.create(
-        ctx.from.id ? ctx.from.id : ctx.callbackQuery.from.id,
-      );
-    } else {
-      createdPayment = await this.cryptoPaymentService.create(
-        ctx.from.id ? ctx.from.id : ctx.callbackQuery.from.id,
-      );
+      await ctx.reply(isFiat ? payMessages.pay : payMessages.cryptoPay, {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: payKeyboard(
+            +price,
+            currency,
+            isFiat
+              ? createdPayment.confirmation.confirmation_url
+              : createdPayment.botPayUrl,
+          ),
+        },
+      });
+    } catch (error) {
+      const typedError: Error = error as Error;
+      ctx.reply(payMessages.errorCreate(typedError.message), {
+        parse_mode: 'HTML',
+      });
+    } finally {
+      await ctx.deleteMessage(loadingMessage.message_id);
     }
-
-    await ctx.deleteMessage(loadingMessage.message_id);
-
-    await ctx.reply(isFiat ? payMessages.pay : payMessages.cryptoPay, {
-      parse_mode: 'HTML',
-      reply_markup: {
-        inline_keyboard: payKeyboard(
-          +price,
-          currency,
-          isFiat
-            ? createdPayment.confirmation.confirmation_url
-            : createdPayment.botPayUrl,
-        ),
-      },
-    });
 
     return;
   }

@@ -1,4 +1,5 @@
 import {
+  type ICreateError,
   type ICreatePayment,
   Payment,
   YooCheckout,
@@ -26,6 +27,8 @@ import {
 } from '@utils';
 import { PaymentService } from './payment.service';
 import { UserSubscriptionsService } from 'crud/subscription/users-subscriptions.service';
+import type { ISubscriptionPlan } from 'lib/types/directus';
+import { AxiosError } from 'axios';
 
 @Injectable()
 export class YookassaPaymentService {
@@ -52,13 +55,15 @@ export class YookassaPaymentService {
     });
   }
 
-  async create(telegramId: number | bigint): Promise<Payment | null> {
+  async create(
+    telegramId: number | bigint,
+    plan: ISubscriptionPlan,
+  ): Promise<Payment | null> {
     const idempotenceKey = this.paymentService.createIdempotenceKey(telegramId);
     const payload: ICreatePayment = {
       amount: {
-        // TODO: сделать цену динамической
-        value: '1990.00',
-        currency: 'RUB',
+        value: plan.price.toString(),
+        currency: plan.currency,
       },
       metadata: {
         telegram_id: telegramId.toString(),
@@ -92,9 +97,10 @@ export class YookassaPaymentService {
 
       return payment;
     } catch (error) {
-      const typedError: Error = error as Error;
-      const errorMessage = `Error creating payment for telegramId ${telegramId}: ${typedError.message}`;
-      throw new InternalServerErrorException(errorMessage);
+      const typedError = error as AxiosError<ICreateError>;
+      throw new InternalServerErrorException(
+        typedError.response.data.description,
+      );
     }
   }
 

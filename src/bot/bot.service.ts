@@ -1,6 +1,7 @@
 import { SystemLoggerService } from '@/config';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { MessagesService } from 'crud';
 import { Telegraf } from 'telegraf';
 import { ChatInviteLink } from 'telegraf/types';
 
@@ -13,6 +14,7 @@ export class BotService {
   constructor(
     private readonly config: ConfigService,
     private readonly loggerService: SystemLoggerService,
+    private readonly messagesService: MessagesService,
   ) {
     this.CHAT_ID = this.config.getOrThrow<string>(
       'TELEGRAM_PRIVATE_CHANNEL_ID',
@@ -36,4 +38,6 @@ export class BotService {
 
     return invite;
   }
+
+  sendMessageByChatId = this.messagesService.sendMessageByChatId;
 }

@@ -76,10 +76,6 @@ export class MessagesService {
       const botMessage = `<b>${message.title}</b>\n\n${message.text}`;
 
       for (const admin of admins) {
-        // if (!admin.settings.sendNewClaimMessages) {
-        //   continue;
-        // }
-
         await this.bot.telegram.sendMessage(admin, botMessage, {
           parse_mode: 'HTML',
           reply_markup: markup,

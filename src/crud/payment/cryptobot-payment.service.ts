@@ -1,10 +1,18 @@
-import type { IPayment } from 'lib/types/directus';
+import type { IPayment, ISubscriptionPlan } from 'lib/types/directus';
 import type { ICryptoPayInvoice, ICryptoPayUpdate } from 'lib/types/crypto-bot';
 import { createItem, updateItems } from '@directus/sdk';
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CmsService } from 'cms/cms.service';
-import CryptoBotAPI, { type Invoice } from 'crypto-bot-api';
+import CryptoBotAPI, {
+  type CryptoCurrencyCode,
+  type Invoice,
+} from 'crypto-bot-api';
 import { PaymentService } from './payment.service';
 import { SystemLoggerService } from 'config';
 import { BotService } from 'bot';
@@ -39,41 +47,47 @@ export class CryptoBotPaymentService {
     );
   }
 
-  async create(telegramId: number | bigint): Promise<Invoice> {
+  async create(
+    telegramId: number | bigint,
+    plan: ISubscriptionPlan,
+  ): Promise<Invoice> {
     const idempotenceKey = this.paymentService.createIdempotenceKey(telegramId);
+    try {
+      const newInvoice = await this.client.createInvoice({
+        amount: plan.price,
+        asset: plan.currency as CryptoCurrencyCode,
+        acceptedAssets: ['USDT', 'TON', 'ETH'],
+        description: plan.description,
+        expiresIn: 3600, // 1 hour
+        payload: {
+          telegram_id: telegramId.toString(),
+          idempotence_key: idempotenceKey,
+        },
+      });
 
-    const newInvoice = await this.client.createInvoice({
-      // TODO: сделать цену динамической
-      amount: 0.99,
-      asset: 'USDT',
-      acceptedAssets: ['USDT', 'TON', 'ETH'],
-      description: `Payment for Neuroluv subscription, Telegram ID: ${telegramId}`,
-      expiresIn: 3600, // 1 hour
-      payload: {
-        telegram_id: telegramId.toString(),
+      const payload: Partial<IPayment> = {
+        amount: plan.price,
+        currency: plan.currency,
+        provider: 'crypto-bot',
+        status: normalizePaymentStatus('crypto-bot', newInvoice.status),
+        provider_payment_id: newInvoice.id.toString(),
         idempotence_key: idempotenceKey,
-      },
-    });
+        confirmation_url: newInvoice.botPayUrl,
+        raw: JSON.stringify(newInvoice),
+      };
 
-    const payload: Partial<IPayment> = {
-      amount: 0.99,
-      currency: 'USD',
-      provider: 'crypto-bot',
-      status: normalizePaymentStatus('crypto-bot', newInvoice.status),
-      provider_payment_id: newInvoice.id.toString(),
-      idempotence_key: idempotenceKey,
-      confirmation_url: newInvoice.botPayUrl,
-      raw: JSON.stringify(newInvoice),
-    };
+      await this.cms.directus.request(
+        createItem('payments', {
+          ...payload,
+          is_link_sent: false,
+        }),
+      );
 
-    await this.cms.directus.request(
-      createItem('payments', {
-        ...payload,
-        is_link_sent: false,
-      }),
-    );
-
-    return newInvoice;
+      return newInvoice;
+    } catch (error) {
+      const typedError: Error = error as Error;
+      throw new InternalServerErrorException(typedError.message);
+    }
   }
 
   async update(notification: ICryptoPayUpdate): Promise<void> {
