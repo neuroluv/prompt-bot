@@ -8,6 +8,7 @@ import { ChannelModule } from './crud/channel/channel.module';
 import { MailingModule } from './crud/mailing/mailing.module';
 import { PaymentModule } from './crud/payment/payment.module';
 import { SubscriptionModule } from './crud/subscription/subscription.module';
+import { ConstantsModule } from 'config/constants';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { SubscriptionModule } from './crud/subscription/subscription.module';
       envFilePath: ENV_NAMES.ENV_PATH(process.env.NODE_ENV),
       isGlobal: true,
     }),
+    ConstantsModule,
     BotModule,
     ChannelModule,
     MessagesModule,

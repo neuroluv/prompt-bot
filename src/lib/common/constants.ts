@@ -2,9 +2,8 @@ import type { ILabelValue } from 'lib/types';
 
 // Global constants
 export const CHATS = [785206267];
-export const SUPPORT_USERNAME = 'ker4ik13';
+export const SUPPORT_USERNAME = 'neuroluv_support';
 export const CHANNELS_LINKS: ILabelValue[] = [
-  // Production mode
   {
     label: `Нейролюб | Нейросети`,
     value: 'NeuroLuv',

@@ -14,6 +14,7 @@ import { session } from 'telegraf';
 import { BotService } from './bot.service';
 import { BotUpdate } from './bot.update';
 import { SubscriptionModule } from 'crud/subscription';
+import { ConstantsModule } from 'config/constants';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { SubscriptionModule } from 'crud/subscription';
         middlewares: [session()],
       }),
     }),
+    ConstantsModule,
     SystemLoggerModule,
     MessagesModule,
     CmsModule,

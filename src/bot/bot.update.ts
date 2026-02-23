@@ -13,10 +13,13 @@ import {
   promptKeyboard,
   payKeyboard,
   payFromSubPlansKeyboard,
+  appKeyboard,
 } from './keyboards';
-import { mainMessages, payMessages } from './messages';
+import { appMessages, mainMessages, payMessages } from './messages';
 import { SubscriptionPlanService } from 'crud/subscription';
 import { isFiatCurrency, PAY_NEUROLUV_CLUB_CURRENCY_REGEX } from 'lib/utils';
+import { ConstantsService } from 'config/constants';
+import { startScenarios } from './scenarios';
 
 @Update()
 export class BotUpdate {
@@ -28,19 +31,56 @@ export class BotUpdate {
     private readonly subscriptionPlanService: SubscriptionPlanService,
     private readonly yookassaPaymentService: YookassaPaymentService,
     private readonly cryptoPaymentService: CryptoBotPaymentService,
+    private readonly constants: ConstantsService,
   ) {}
 
+  private async isPreparedStartParam(ctx: Context | SceneContext) {
+    const value = getValueFromAction(ctx, {
+      separator: '=',
+      index: 1,
+    });
+
+    switch (startScenarios[value]) {
+      case startScenarios.neuroluv_club:
+        await this.prePayPrivateChannel(ctx as SceneContext);
+        break;
+
+      case startScenarios.app:
+        await this.startApp(ctx as SceneContext);
+        break;
+
+      default:
+        await ctx.reply(mainMessages.hello, {
+          parse_mode: 'HTML',
+          link_preview_options: {
+            is_disabled: true,
+          },
+          reply_markup: {
+            inline_keyboard: promptKeyboard(CHANNELS_LINKS[0]),
+          },
+        });
+        break;
+    }
+  }
+
   @Action('main-menu')
+  @Action(/^\/start[ =](.+)$/)
   @Start()
-  async start(@Ctx() ctx: SceneContext) {
+  async start(@Ctx() ctx: Context) {
     this.cms.upsertUser(ctx);
-    await ctx.reply(mainMessages.hello, {
+    await this.isPreparedStartParam(ctx);
+    return;
+  }
+
+  @Action('app')
+  async startApp(@Ctx() ctx: Context) {
+    await ctx.reply(appMessages.welcome, {
       parse_mode: 'HTML',
       link_preview_options: {
         is_disabled: true,
       },
       reply_markup: {
-        inline_keyboard: promptKeyboard(CHANNELS_LINKS[0]),
+        inline_keyboard: appKeyboard(),
       },
     });
     return;
@@ -62,7 +102,6 @@ export class BotUpdate {
   }
 
   @Action('neuroluv_club')
-  @CheckSubscription()
   async prePayPrivateChannel(@Ctx() ctx: SceneContext) {
     const channels = await this.subscriptionPlanService.getPlanssByIncludeSlug(
       this.subscriptionPlanService.privateChannelSlug,
@@ -78,10 +117,13 @@ export class BotUpdate {
   }
 
   @Action(PAY_NEUROLUV_CLUB_CURRENCY_REGEX)
-  @CheckSubscription()
   async payPrivateChannel(@Ctx() ctx: SceneContext) {
-    const price = getValueFromAction(ctx, 2);
-    const currency = getValueFromAction(ctx, 3);
+    const price = getValueFromAction(ctx, {
+      index: 2,
+    });
+    const currency = getValueFromAction(ctx, {
+      index: 3,
+    });
     const loadingMessage = await ctx.reply(mainMessages.loading, {
       parse_mode: 'HTML',
     });
@@ -105,18 +147,23 @@ export class BotUpdate {
         );
       }
 
-      await ctx.reply(isFiat ? payMessages.pay : payMessages.cryptoPay, {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: payKeyboard(
-            +price,
-            currency,
-            isFiat
-              ? createdPayment.confirmation.confirmation_url
-              : createdPayment.botPayUrl,
-          ),
+      await ctx.reply(
+        isFiat
+          ? payMessages.pay(this.constants.SUPPORT_USERNAME)
+          : payMessages.cryptoPay(this.constants.SUPPORT_USERNAME),
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: payKeyboard(
+              +price,
+              currency,
+              isFiat
+                ? createdPayment.confirmation.confirmation_url
+                : createdPayment.botPayUrl,
+            ),
+          },
         },
-      });
+      );
     } catch (error) {
       const typedError: Error = error as Error;
       ctx.reply(payMessages.errorCreate(typedError.message), {
@@ -129,10 +176,13 @@ export class BotUpdate {
     return;
   }
 
-  @CheckSubscription()
   @Action(/^download-file-\S+$/)
+  @CheckSubscription()
   async downloadFile(@Ctx() ctx: Context) {
-    const promptFileName = getValueFromAction(ctx, 2, '-');
+    const promptFileName = getValueFromAction(ctx, {
+      separator: '-',
+      index: 2,
+    });
 
     const promptFile = await this.cms.getPromptFileByName(promptFileName);
     const start = performance.now(); // для измерения времени загрузки
