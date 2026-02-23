@@ -67,7 +67,7 @@ export class BotUpdate {
   @Action(/^\/start[ =](.+)$/)
   @Start()
   async start(@Ctx() ctx: Context) {
-    this.cms.upsertUser(ctx);
+    await this.cms.upsertUser(ctx);
     await this.isPreparedStartParam(ctx);
     return;
   }
