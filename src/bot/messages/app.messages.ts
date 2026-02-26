@@ -2,7 +2,7 @@ import { emojis } from 'lib/utils';
 
 export const appMessages = {
   welcome: `
-${emojis.premium.robot} Промпт-галерея Нейролюб — это место, где я собрал лучшие промпты в одном окне.
+${emojis.premium.robot} Библиотека промптов от Нейролюба — это место, где я собрал лучшие промпты в одном окне.
 
 Что внутри:
 ${emojis.premium.stars} готовые промпты под разные стили и задачи

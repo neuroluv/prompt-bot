@@ -9,7 +9,7 @@ export const mainKeyboard = () => {
     //   }),
     // ],
     [
-      webAppPlus(`Галерея промптов`, 'https://app.neuroluv.ru', {
+      webAppPlus(`Библиотека промптов`, 'https://app.neuroluv.ru', {
         icon_custom_emoji_id: emojis.premium.forButtons.robot,
       }),
     ],

@@ -6,7 +6,7 @@ export const appKeyboard = () => {
   return [
     [
       Markup.button.webApp(
-        `${emojis.robot} Галерея промптов`,
+        `${emojis.robot} Библиотека промптов`,
         'https://app.neuroluv.ru',
       ),
     ],
