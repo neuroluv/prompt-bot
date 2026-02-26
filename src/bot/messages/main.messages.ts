@@ -1,8 +1,7 @@
-import { CHANNELS_LINKS } from 'lib/common';
 import { emojis } from 'lib/utils';
 
 export const mainMessages = {
-  hello: `<b>Привет! Рад тебя видеть ${emojis.premium.dog}</b>\n\nЯ подготовила для тебя несколько полезных файлов: 3 файла с промптами и гайд по созданию AI модели, которые можно забрать бесплатно.\n\Выбирай то, что сейчас актуальнее всего ${emojis.premium.stars}\n\n<b>Небольшое условие:</b>\nнужно быть подписанным на мой <b><a href="https://t.me/${CHANNELS_LINKS[0].value}">Telegram-канал</a></b> ${emojis.premium.heartPixel}\n\nПодпишись, возвращайся сюда  и я сразу открою доступ к файлам ${emojis.premium.handDown}`,
+  hello: `<b>Привет! Рад тебя видеть ${emojis.premium.dog}</b>\n\nЯ собрала для тебя две штуки, которые реально экономят время:\n\n${emojis.premium.robot} <b>Галерея промптов</b> – мини-приложение прямо в Telegram.\nУдобный каталог, в котором можно быстро найти нужный стиль/задачу и копировать промпты в один тап.\n\n${emojis.premium.diamond} <b>Файлы с промптами</b> – подборки промптов + полезные материалы, которые можно забрать себе.`,
 
   successDownload: `Ура, всё получилось ${emojis.premium.heartPixel}\nПодписка подтверждена!\n\nВот твой файл. Надеюсь, он будет тебе полезен ${emojis.premium.stars}\n\nЕсли захочешь - можешь вернуться и выбрать ещё один файл из доступных.`,
 

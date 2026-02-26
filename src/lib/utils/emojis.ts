@@ -17,6 +17,7 @@ export const emojis = {
       BNB: '5193131612853789713',
       RUB: '5255806447106679302',
       EUR: '5256008271914885402',
+      phone: '5407025283456835913',
     },
     USDT: '<tg-emoji emoji-id="5192942020112442148">$</tg-emoji>',
     USD: '<tg-emoji emoji-id="5255933397750014894">$</tg-emoji>',
@@ -42,6 +43,7 @@ export const emojis = {
     gift: '<tg-emoji emoji-id="5427315847129478207">🎁</tg-emoji>',
     lightning: '<tg-emoji emoji-id="5312016608254762256">⚡️</tg-emoji>',
     cryptoBot: '<tg-emoji emoji-id="5195058841988914267">💎</tg-emoji>',
+    phone: '<tg-emoji emoji-id="5407025283456835913">📱</tg-emoji>',
     numbers: {
       0: '<tg-emoji emoji-id="5242380641332393116">0️⃣</tg-emoji>',
       1: '<tg-emoji emoji-id="5244961448525848230">1️⃣</tg-emoji>',

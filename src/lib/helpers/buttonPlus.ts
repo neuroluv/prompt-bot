@@ -27,3 +27,15 @@ export const urlPlus = (
     btn.icon_custom_emoji_id = opts.icon_custom_emoji_id;
   return btn;
 };
+
+export const webAppPlus = (
+  text: string,
+  url: string,
+  opts?: { style?: BtnStyle; icon_custom_emoji_id?: string },
+) => {
+  const btn = Markup.button.webApp(text, url) as any;
+  if (opts?.style) btn.style = opts.style;
+  if (opts?.icon_custom_emoji_id)
+    btn.icon_custom_emoji_id = opts.icon_custom_emoji_id;
+  return btn;
+};

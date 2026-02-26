@@ -4,18 +4,31 @@ import { SystemLoggerService } from 'config';
 import { CryptoBotPaymentService, YookassaPaymentService } from 'crud/payment';
 import { CHANNELS_LINKS } from 'lib/common';
 import { getValueFromAction } from 'lib/helpers';
-import { Action, Ctx, InjectBot, Start, Update } from 'nestjs-telegraf';
+import {
+  Action,
+  Command,
+  Ctx,
+  InjectBot,
+  Start,
+  Update,
+} from 'nestjs-telegraf';
 import { performance } from 'node:perf_hooks';
 import { Context, Input, Telegraf } from 'telegraf';
 import { SceneContext } from 'telegraf/scenes';
 import {
   goToHomeKeyboard,
-  promptKeyboard,
+  mainKeyboard,
   payKeyboard,
   payFromSubPlansKeyboard,
   appKeyboard,
+  guideFilesKeyboard,
 } from './keyboards';
-import { appMessages, mainMessages, payMessages } from './messages';
+import {
+  appMessages,
+  guideFilesMessages,
+  mainMessages,
+  payMessages,
+} from './messages';
 import { SubscriptionPlanService } from 'crud/subscription';
 import { isFiatCurrency, PAY_NEUROLUV_CLUB_CURRENCY_REGEX } from 'lib/utils';
 import { ConstantsService } from 'config/constants';
@@ -56,7 +69,7 @@ export class BotUpdate {
             is_disabled: true,
           },
           reply_markup: {
-            inline_keyboard: promptKeyboard(CHANNELS_LINKS[0]),
+            inline_keyboard: mainKeyboard(),
           },
         });
         break;
@@ -67,12 +80,13 @@ export class BotUpdate {
   @Action(/^\/start[ =](.+)$/)
   @Start()
   async start(@Ctx() ctx: Context) {
-    await this.cms.upsertUser(ctx);
     await this.isPreparedStartParam(ctx);
+    await this.cms.upsertUser(ctx);
     return;
   }
 
   @Action('app')
+  @Command('app')
   async startApp(@Ctx() ctx: Context) {
     await ctx.reply(appMessages.welcome, {
       parse_mode: 'HTML',
@@ -81,6 +95,21 @@ export class BotUpdate {
       },
       reply_markup: {
         inline_keyboard: appKeyboard(),
+      },
+    });
+    return;
+  }
+
+  @Action('guide_files')
+  @Command('guide_files')
+  async guideFiles(@Ctx() ctx: Context) {
+    await ctx.reply(guideFilesMessages.hello, {
+      parse_mode: 'HTML',
+      link_preview_options: {
+        is_disabled: true,
+      },
+      reply_markup: {
+        inline_keyboard: guideFilesKeyboard(CHANNELS_LINKS[0]),
       },
     });
     return;
@@ -95,13 +124,14 @@ export class BotUpdate {
         is_disabled: true,
       },
       reply_markup: {
-        inline_keyboard: promptKeyboard(CHANNELS_LINKS[0]),
+        inline_keyboard: mainKeyboard(),
       },
     });
     return;
   }
 
   @Action('neuroluv_club')
+  @Command('club')
   async prePayPrivateChannel(@Ctx() ctx: SceneContext) {
     const channels = await this.subscriptionPlanService.getPlanssByIncludeSlug(
       this.subscriptionPlanService.privateChannelSlug,

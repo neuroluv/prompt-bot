@@ -29,6 +29,7 @@ export class ChannelService {
           ),
           {
             caption: mainMessages.needSubscribe,
+            parse_mode: 'HTML',
             reply_markup: {
               inline_keyboard: channelsKeyboard([CHANNELS_LINKS[0]]),
             },

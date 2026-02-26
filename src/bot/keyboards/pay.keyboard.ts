@@ -1,6 +1,7 @@
 import { callbackPlus, urlPlus } from 'lib/helpers';
 import { ISubscriptionPlan } from 'lib/types/directus';
 import { beautyCurrency, emojis, isFiatCurrency } from 'lib/utils';
+import { goToHomeKeyboard } from './go-to-home.keyboard';
 
 export const prePayKeyboard = () => {
   return [
@@ -69,5 +70,5 @@ export const payFromSubPlansKeyboard = (plans: ISubscriptionPlan[]) => {
     ];
   });
 
-  return result;
+  return [...result, ...goToHomeKeyboard()];
 };
