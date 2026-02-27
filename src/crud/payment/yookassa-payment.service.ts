@@ -251,6 +251,11 @@ export class YookassaPaymentService {
             inline_keyboard: afterPayKeyboard(inviteLink),
           },
         });
+
+        await this.bot.sendAdminMessage({
+          text: payMessages.sendAdminSuccess(existingPayment),
+          title: 'Произошла оплата приватного телеграм канала!',
+        });
       } catch (sendError) {
         await this.paymentService.markLinkAsNotSent(paymentId);
         throw sendError;
