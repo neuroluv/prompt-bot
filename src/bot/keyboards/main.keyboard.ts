@@ -3,11 +3,11 @@ import { emojis } from 'lib/utils';
 
 export const mainKeyboard = () => {
   const resultKeyboard = [
-    // [
-    //   callbackPlus(`Нейролюб Клуб`, 'neuroluv_club', {
-    //     icon_custom_emoji_id: emojis.premium.forButtons.flower,
-    //   }),
-    // ],
+    [
+      callbackPlus(`Нейролюб Клуб`, 'neuroluv_club', {
+        icon_custom_emoji_id: emojis.premium.forButtons.flower,
+      }),
+    ],
     [
       webAppPlus(`Библиотека промптов`, 'https://app.neuroluv.ru', {
         icon_custom_emoji_id: emojis.premium.forButtons.robot,
