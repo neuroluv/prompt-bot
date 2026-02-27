@@ -27,13 +27,21 @@ export const payKeyboard = (
   const btnText = `Оплатить ${price} ${beautyCurrency(currency, !!isFiat)}`;
 
   return [
+    // TODO: сделать норм кнопку
     [
-      urlPlus(btnText, payUrl, {
+      callbackPlus(btnText, 'main-menu', {
         icon_custom_emoji_id: isFiat
           ? emojis.premium.forButtons.card
           : beautyCurrency(currency),
       }),
     ],
+    // [
+    //   urlPlus(btnText, payUrl, {
+    //     icon_custom_emoji_id: isFiat
+    //       ? emojis.premium.forButtons.card
+    //       : beautyCurrency(currency),
+    //   }),
+    // ],
   ];
 };
 
