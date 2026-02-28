@@ -5,11 +5,11 @@ import type { IUserSubscription } from 'lib/types/directus';
 
 @Injectable()
 export class UserSubscriptionsService {
-  constructor(private readonly cms: CmsService) {}
+	constructor(private readonly cms: CmsService) {}
 
-  async create(subscription: Partial<IUserSubscription>) {
-    return await this.cms.directus.request(
-      createItem('user_subscriptions', subscription),
-    );
-  }
+	async create(subscription: Partial<IUserSubscription>) {
+		return await this.cms.directus.request(
+			createItem('user_subscriptions', subscription),
+		);
+	}
 }

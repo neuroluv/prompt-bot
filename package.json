@@ -43,6 +43,7 @@
     "crypto-bot-api": "^0.3.6",
     "nestjs-telegraf": "^2.9.1",
     "nestjs-uuid": "^0.1.4",
+    "nestjs-yookassa": "^2.3.6",
     "qs": "^6.14.1",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
@@ -50,6 +51,7 @@
     "telegraf-session-local": "^2.1.1"
   },
   "devDependencies": {
+    "@kireevdev/core": "^1.0.2",
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",

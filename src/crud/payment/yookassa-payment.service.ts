@@ -1,291 +1,368 @@
 import {
-  type ICreateError,
-  type ICreatePayment,
-  Payment,
-  YooCheckout,
+	type ICreateError,
+	type ICreatePayment,
+	Payment,
+	YooCheckout,
 } from '@a2seven/yoo-checkout';
-import { createItem, updateItems } from '@directus/sdk';
+import { createItem, readItems, updateItems } from '@directus/sdk';
 import {
-  forwardRef,
-  Inject,
-  Injectable,
-  InternalServerErrorException,
+	Inject,
+	Injectable,
+	InternalServerErrorException,
+	forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+	YOOKASSA_NOTIFICATION_FIELDS,
+	getRawNotificationEvent,
+	getRawNotificationObjectId,
+	isPaymentNotificationEnvelope,
+	normalizePaymentStatus,
+} from '@utils';
+import { AxiosError } from 'axios';
 import { BotService } from 'bot/bot.service';
 import { afterPayKeyboard } from 'bot/keyboards';
 import { payMessages } from 'bot/messages';
 import { CmsService } from 'cms/cms.service';
 import { SystemLoggerService } from 'config';
-import { YooKassaNotification } from 'lib/types';
-import {
-  getRawNotificationEvent,
-  getRawNotificationObjectId,
-  isPaymentNotificationEnvelope,
-  normalizePaymentStatus,
-  YOOKASSA_NOTIFICATION_FIELDS,
-} from '@utils';
-import { PaymentService } from './payment.service';
 import { UserSubscriptionsService } from 'crud/subscription/users-subscriptions.service';
-import type { ISubscriptionPlan } from 'lib/types/directus';
-import { AxiosError } from 'axios';
+import { YooKassaNotification } from 'lib/types';
+import type { IPayment, ISubscriptionPlan } from 'lib/types/directus';
+import { PaymentService } from './payment.service';
 
 @Injectable()
 export class YookassaPaymentService {
-  private readonly yookassaShopId: string;
-  private readonly yookassaKey: string;
-  private readonly yooKassa: YooCheckout;
+	private readonly yookassaShopId: string;
+	private readonly yookassaKey: string;
+	private readonly yookassa: YooCheckout;
 
-  constructor(
-    private readonly config: ConfigService,
-    private readonly logger: SystemLoggerService,
-    private readonly cms: CmsService,
-    private readonly userSubsService: UserSubscriptionsService,
-    @Inject(forwardRef(() => BotService))
-    private readonly bot: BotService,
-    @Inject(forwardRef(() => PaymentService))
-    private readonly paymentService: PaymentService,
-  ) {
-    this.yookassaShopId = this.config.getOrThrow('YOOKASSA_SHOP_ID');
-    this.yookassaKey = this.config.getOrThrow('YOOKASSA_KEY');
+	constructor(
+		private readonly config: ConfigService,
+		private readonly logger: SystemLoggerService,
+		private readonly cms: CmsService,
+		private readonly userSubsService: UserSubscriptionsService,
+		@Inject(forwardRef(() => BotService))
+		private readonly bot: BotService,
+		@Inject(forwardRef(() => PaymentService))
+		private readonly paymentService: PaymentService,
+	) {
+		this.yookassaShopId = this.config.getOrThrow('YOOKASSA_SHOP_ID');
+		this.yookassaKey = this.config.getOrThrow('YOOKASSA_KEY');
 
-    this.yooKassa = new YooCheckout({
-      secretKey: this.yookassaKey,
-      shopId: this.yookassaShopId,
-    });
-  }
+		this.yookassa = new YooCheckout({
+			secretKey: this.yookassaKey,
+			shopId: this.yookassaShopId,
+		});
+	}
 
-  async create(
-    telegramId: number | bigint,
-    plan: ISubscriptionPlan,
-  ): Promise<Payment | null> {
-    const idempotenceKey = this.paymentService.createIdempotenceKey(telegramId);
-    const payload: ICreatePayment = {
-      amount: {
-        value: plan.price.toString(),
-        currency: plan.currency,
-      },
-      metadata: {
-        telegram_id: telegramId.toString(),
-        idempotence_key: idempotenceKey,
-      },
-      payment_method_data: {
-        type: 'bank_card',
-      },
-      capture: true,
-      confirmation: {
-        type: 'redirect',
-        return_url: `https://t.me/${this.bot.username}`,
-      },
-    };
+	async findByTelegramId(
+		telegramId: number | bigint,
+	): Promise<IPayment | null> {
+		const existedPayment = await this.cms.directus.request(
+			readItems('payments', {
+				filter: {
+					_and: [
+						{
+							idempotence_key: {
+								_contains: telegramId.toString(),
+							},
+						},
+						{
+							_or: [
+								{
+									status: {
+										_eq: 'created',
+									},
+								},
+								{
+									status: {
+										_eq: 'pending',
+									},
+								},
+							],
+						},
+					],
+				},
+			}),
+		);
 
-    try {
-      const payment = await this.yooKassa.createPayment(
-        payload,
-        idempotenceKey,
-      );
-      const createPayload = this.createPayload(payment, {
-        idempotenceKey,
-      });
+		if (!existedPayment[0] || !existedPayment[0].id) {
+			return null;
+		}
 
-      await this.cms.directus.request(
-        createItem('payments', {
-          ...createPayload,
-          is_link_sent: false,
-        }),
-      );
+		return existedPayment[0];
+	}
 
-      return payment;
-    } catch (error) {
-      const typedError = error as AxiosError<ICreateError>;
-      throw new InternalServerErrorException(
-        typedError.response.data.description,
-      );
-    }
-  }
+	async findOrCreate(
+		telegramId: number | bigint,
+		plan: ISubscriptionPlan,
+	): Promise<Payment | null> {
+		const isPaymentExist = await this.findByTelegramId(telegramId);
 
-  async update(notification: YooKassaNotification<Payment>): Promise<void> {
-    const providerPaymentId = String(notification.object.id);
-    const existedPayment =
-      await this.paymentService.getPaymentByTransactionId(providerPaymentId);
+		if (!isPaymentExist) {
+			return await this.create(telegramId, plan);
+		}
 
-    const basePayload = this.createPayload(notification.object, {
-      idempotenceKey: this.paymentService.extractIdempotenceKey(
-        notification.object.metadata,
-      ),
-    });
+		const yookassaPayment = await this.yookassa.getPayment(
+			isPaymentExist.provider_payment_id,
+		);
+		if (!yookassaPayment) {
+			return await this.create(telegramId, plan);
+		}
 
-    if (existedPayment?.id) {
-      await this.cms.directus.request(
-        updateItems(
-          'payments',
-          {
-            filter: { provider_payment_id: { _eq: providerPaymentId } },
-          },
-          basePayload,
-        ),
-      );
-      return;
-    }
+		return yookassaPayment;
+	}
 
-    await this.cms.directus.request(
-      createItem('payments', {
-        ...basePayload,
-        is_link_sent: false,
-      }),
-    );
-  }
+	async create(
+		telegramId: number | bigint,
+		plan: ISubscriptionPlan,
+	): Promise<Payment | null> {
+		const idempotenceKey = this.paymentService.createIdempotenceKey(telegramId);
+		const payload: ICreatePayment = {
+			amount: {
+				value: plan.price.toString(),
+				currency: plan.currency,
+			},
+			metadata: {
+				telegram_id: telegramId.toString(),
+				idempotence_key: idempotenceKey,
+				email: 'kireev.kirill2004@mail.ru',
+			},
+			payment_method_data: {
+				type: 'bank_card',
+			},
+			capture: true,
+			confirmation: {
+				type: 'redirect',
+				return_url: `https://t.me/${this.bot.username}`,
+			},
+		};
 
-  createPayload(
-    payment: Payment,
-    options: { idempotenceKey?: string },
-  ): Record<string, unknown> {
-    const payload: Record<string, unknown> = {
-      amount: Number(payment.amount.value),
-      currency: payment.amount.currency,
-      provider_payment_id: String(payment.id),
-      status: normalizePaymentStatus('yookassa', payment.status),
-      provider: 'yookassa',
-      raw: JSON.stringify(payment),
-    };
+		try {
+			const payment = await this.yookassa.createPayment(
+				payload,
+				idempotenceKey,
+			);
+			const createPayload = this.createPayload(payment, {
+				idempotenceKey,
+			});
 
-    if (options.idempotenceKey) {
-      payload.idempotence_key = options.idempotenceKey;
-    }
+			await this.cms.directus.request(
+				createItem('payments', {
+					...createPayload,
+					is_link_sent: false,
+				}),
+			);
 
-    if (payment.confirmation?.confirmation_url !== undefined) {
-      payload.confirmation_url = payment.confirmation.confirmation_url;
-    }
+			return payment;
+		} catch (error) {
+			const typedError = error as AxiosError<ICreateError>;
+			throw new InternalServerErrorException(
+				typedError.response.data.description,
+			);
+		}
+	}
 
-    if (payment.captured_at !== undefined) {
-      payload.paid_at = payment.captured_at;
-    }
+	async update(notification: YooKassaNotification<Payment>): Promise<void> {
+		const providerPaymentId = String(notification.object.id);
+		const existedPayment =
+			await this.paymentService.getPaymentByTransactionId(providerPaymentId);
 
-    return payload;
-  }
+		const basePayload = this.createPayload(notification.object, {
+			idempotenceKey: this.paymentService.extractIdempotenceKey(
+				notification.object.metadata,
+			),
+		});
 
-  async processNotificationSafely(body: unknown): Promise<void> {
-    const paymentId = getRawNotificationObjectId(
-      body,
-      YOOKASSA_NOTIFICATION_FIELDS.objectField,
-      YOOKASSA_NOTIFICATION_FIELDS.objectIdField,
-    );
-    const event = getRawNotificationEvent(
-      body,
-      YOOKASSA_NOTIFICATION_FIELDS.eventField,
-    );
+		if (existedPayment?.id) {
+			await this.cms.directus.request(
+				updateItems(
+					'payments',
+					{
+						filter: { provider_payment_id: { _eq: providerPaymentId } },
+					},
+					basePayload,
+				),
+			);
+			return;
+		}
 
-    try {
-      if (
-        !isPaymentNotificationEnvelope<YooKassaNotification<Payment>>(
-          body,
-          YOOKASSA_NOTIFICATION_FIELDS,
-        )
-      ) {
-        this.logger.log(
-          `Skipping non-payment event=${event ?? 'unknown'} objectId=${paymentId ?? 'unknown'}`,
-        );
-        return;
-      }
+		await this.cms.directus.request(
+			createItem('payments', {
+				...basePayload,
+				is_link_sent: false,
+			}),
+		);
+	}
 
-      await this.update(body);
+	createPayload(
+		payment: Payment,
+		options: { idempotenceKey?: string },
+	): Record<string, unknown> {
+		const payload: Record<string, unknown> = {
+			amount: Number(payment.amount.value),
+			currency: payment.amount.currency,
+			provider_payment_id: String(payment.id),
+			status: normalizePaymentStatus('yookassa', payment.status),
+			provider: 'yookassa',
+			raw: JSON.stringify(payment),
+		};
 
-      if (body.event !== 'payment.succeeded') return;
-      if (!paymentId) {
-        this.logger.warn('No paymentId in notification payload.');
-        return;
-      }
+		if (options.idempotenceKey) {
+			payload.idempotence_key = options.idempotenceKey;
+		}
 
-      const telegramId = this.extractTelegramId(body);
-      if (telegramId === null) {
-        this.logger.warn(
-          `No valid telegramId in payment metadata. paymentId=${paymentId}`,
-        );
-        return;
-      }
+		if (payment.confirmation?.confirmation_url !== undefined) {
+			payload.confirmation_url = payment.confirmation.confirmation_url;
+		}
 
-      const existingPayment =
-        await this.paymentService.getPaymentByTransactionId(paymentId);
+		if (payment.captured_at !== undefined) {
+			payload.paid_at = payment.captured_at;
+		}
 
-      if (!existingPayment) {
-        this.logger.warn(`Payment not found in DB. paymentId=${paymentId}`);
-        return;
-      }
+		return payload;
+	}
 
-      if (existingPayment.is_link_sent) {
-        this.logger.log(
-          `Invite link already sent. paymentId=${paymentId}, telegramId=${telegramId}`,
-        );
-        return;
-      }
+	async processNotificationSafely(body: unknown): Promise<void> {
+		const paymentId = getRawNotificationObjectId(
+			body,
+			YOOKASSA_NOTIFICATION_FIELDS.objectField,
+			YOOKASSA_NOTIFICATION_FIELDS.objectIdField,
+		);
+		const event = getRawNotificationEvent(
+			body,
+			YOOKASSA_NOTIFICATION_FIELDS.eventField,
+		);
 
-      const inviteLink =
-        existingPayment.invite_link ??
-        (await this.bot.createOnetimeInviteLink()).invite_link;
-      const canSend = await this.paymentService.markLinkSentIfNotSent(
-        paymentId,
-        inviteLink,
-      );
-      if (!canSend) {
-        this.logger.log(
-          `Skip duplicate send attempt. paymentId=${paymentId}, telegramId=${telegramId}`,
-        );
-        return;
-      }
+		try {
+			if (
+				!isPaymentNotificationEnvelope<YooKassaNotification<Payment>>(
+					body,
+					YOOKASSA_NOTIFICATION_FIELDS,
+				)
+			) {
+				this.logger.log(
+					`Skipping non-payment event=${event ?? 'unknown'} objectId=${paymentId ?? 'unknown'}`,
+				);
+				return;
+			}
 
-      const user = await this.cms.getUserByTelegramId(telegramId);
+			await this.update(body);
 
-      await this.userSubsService.create({
-        started_at: existingPayment.paid_at,
-        activated_at: existingPayment.paid_at,
-        payments: existingPayment,
-        source: 'yookassa',
-        status: 'active',
-        user: user,
-      });
+			if (body.event !== 'payment.succeeded') return;
+			if (!paymentId) {
+				this.logger.warn('No paymentId in notification payload.');
+				return;
+			}
 
-      try {
-        await this.bot.telegram.sendMessage(telegramId, payMessages.success, {
-          parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: afterPayKeyboard(inviteLink),
-          },
-        });
+			const telegramId = this.extractTelegramId(body);
+			if (telegramId === null) {
+				this.logger.warn(
+					`No valid telegramId in payment metadata. paymentId=${paymentId}`,
+				);
+				return;
+			}
 
-        await this.bot.sendAdminMessage({
-          text: payMessages.sendAdminSuccess(existingPayment),
-          title: 'Произошла оплата приватного телеграм канала!',
-        });
-      } catch (sendError) {
-        await this.paymentService.markLinkAsNotSent(paymentId);
-        throw sendError;
-      }
+			const existingPayment =
+				await this.paymentService.getPaymentByTransactionId(paymentId);
 
-      this.logger.log(
-        `Invite link sent. paymentId=${paymentId}, telegramId=${telegramId}`,
-      );
-    } catch (e) {
-      this.logger.error(
-        `processNotificationSafely failed (paymentId=${paymentId ?? 'unknown'}): ${String(
-          (e as Error)?.message ?? e,
-        )}`,
-      );
-    }
-  }
+			if (!existingPayment) {
+				this.logger.warn(`Payment not found in DB. paymentId=${paymentId}`);
+				return;
+			}
 
-  private extractTelegramId(
-    body: YooKassaNotification<Payment>,
-  ): number | null {
-    const metadata = body?.object?.metadata as
-      | Record<string, unknown>
-      | undefined;
-    const rawTelegramId = metadata?.telegram_id ?? metadata?.telegramId;
+			if (existingPayment.is_link_sent) {
+				this.logger.log(
+					`Invite link already sent. paymentId=${paymentId}, telegramId=${telegramId}`,
+				);
+				return;
+			}
 
-    if (rawTelegramId === undefined || rawTelegramId === null) {
-      return null;
-    }
+			const inviteLink =
+				existingPayment.invite_link ??
+				(await this.bot.createOnetimeInviteLink()).invite_link;
+			const canSend = await this.paymentService.markLinkSentIfNotSent(
+				paymentId,
+				inviteLink,
+			);
+			if (!canSend) {
+				this.logger.log(
+					`Skip duplicate send attempt. paymentId=${paymentId}, telegramId=${telegramId}`,
+				);
+				return;
+			}
 
-    const telegramId = Number(rawTelegramId);
-    return Number.isFinite(telegramId) ? telegramId : null;
-  }
+			const user = await this.cms.getUserByTelegramId(telegramId);
+
+			await this.userSubsService.create({
+				started_at: existingPayment.paid_at,
+				activated_at: existingPayment.paid_at,
+				payments: existingPayment,
+				source: 'yookassa',
+				status: 'active',
+				user: user,
+			});
+
+			try {
+				await this.bot.telegram.sendMessage(telegramId, payMessages.success, {
+					parse_mode: 'HTML',
+					reply_markup: {
+						inline_keyboard: afterPayKeyboard(inviteLink),
+					},
+				});
+
+				// TODO: добавить чек
+				// const userEmail = this.extractEmail(body);
+
+				await this.bot.sendAdminMessage({
+					text: payMessages.sendAdminSuccess(existingPayment),
+					title: 'Произошла оплата приватного телеграм канала!',
+				});
+			} catch (sendError) {
+				await this.paymentService.markLinkAsNotSent(paymentId);
+				throw sendError;
+			}
+
+			this.logger.log(
+				`Invite link sent. paymentId=${paymentId}, telegramId=${telegramId}`,
+			);
+		} catch (e) {
+			this.logger.error(
+				`processNotificationSafely failed (paymentId=${paymentId ?? 'unknown'}): ${String(
+					(e as Error)?.message ?? e,
+				)}`,
+			);
+		}
+	}
+
+	private extractTelegramId(
+		body: YooKassaNotification<Payment>,
+	): number | null {
+		const metadata = body?.object?.metadata as
+			| Record<string, unknown>
+			| undefined;
+		const rawTelegramId = metadata?.telegram_id ?? metadata?.telegramId;
+
+		if (rawTelegramId === undefined || rawTelegramId === null) {
+			return null;
+		}
+
+		const telegramId = Number(rawTelegramId);
+		return Number.isFinite(telegramId) ? telegramId : null;
+	}
+
+	private extractEmail(body: YooKassaNotification<Payment>): string | null {
+		const metadata = body?.object?.metadata as
+			| Record<string, unknown>
+			| undefined;
+		const rawEmail = metadata?.email;
+
+		if (rawEmail === undefined || rawEmail === null) {
+			return null;
+		}
+
+		const email = String(rawEmail);
+
+		return email;
+	}
 }

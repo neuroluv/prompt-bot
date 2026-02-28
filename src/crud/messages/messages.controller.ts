@@ -4,13 +4,13 @@ import { MessagesService } from './messages.service';
 
 @Controller('messages')
 export class MessagesController {
-  constructor(private readonly messagesService: MessagesService) {}
+	constructor(private readonly messagesService: MessagesService) {}
 
-  @Post(':id')
-  sendMessageUserByChatId(
-    @Param('id') chatId: string,
-    @Body() dto: ICustomMessage,
-  ) {
-    return this.messagesService.sendMessageByChatId(+chatId, dto.message);
-  }
+	@Post(':id')
+	sendMessageUserByChatId(
+		@Param('id') chatId: string,
+		@Body() dto: ICustomMessage,
+	) {
+		return this.messagesService.sendMessageByChatId(+chatId, dto.message);
+	}
 }

@@ -1,4 +1,4 @@
 export interface IAdminMessage {
-  title: string;
-  text: string;
+	title: string;
+	text: string;
 }

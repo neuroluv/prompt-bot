@@ -4,79 +4,71 @@ import { beautyCurrency, emojis, isFiatCurrency } from 'lib/utils';
 import { goToHomeKeyboard } from './go-to-home.keyboard';
 
 export const prePayKeyboard = () => {
-  return [
-    [
-      callbackPlus(`Оплатить картой`, 'pay-neuroluv_club', {
-        icon_custom_emoji_id: emojis.premium.forButtons.card,
-      }),
-    ],
-    [
-      callbackPlus(`Оплатить через Crypto Bot`, 'crypto_pay-neuroluv_club', {
-        icon_custom_emoji_id: emojis.premium.forButtons.cryptoBot,
-      }),
-    ],
-  ];
+	return [
+		[
+			callbackPlus(`Оплатить картой`, 'pay-neuroluv_club', {
+				icon_custom_emoji_id: emojis.premium.forButtons.card,
+			}),
+		],
+		[
+			callbackPlus(`Оплатить через Crypto Bot`, 'crypto_pay-neuroluv_club', {
+				icon_custom_emoji_id: emojis.premium.forButtons.cryptoBot,
+			}),
+		],
+	];
 };
 
 export const payKeyboard = (
-  price: number,
-  currency: string,
-  payUrl: string,
+	price: number,
+	currency: string,
+	payUrl: string,
 ) => {
-  const isFiat = isFiatCurrency(currency);
-  const btnText = `Оплатить ${price} ${beautyCurrency(currency, !!isFiat)}`;
+	const isFiat = isFiatCurrency(currency);
+	const btnText = `Оплатить ${price} ${beautyCurrency(currency, !!isFiat)}`;
 
-  return [
-    // TODO: сделать норм кнопку
-    [
-      callbackPlus(btnText, 'main-menu', {
-        icon_custom_emoji_id: isFiat
-          ? emojis.premium.forButtons.card
-          : beautyCurrency(currency),
-      }),
-    ],
-    // [
-    //   urlPlus(btnText, payUrl, {
-    //     icon_custom_emoji_id: isFiat
-    //       ? emojis.premium.forButtons.card
-    //       : beautyCurrency(currency),
-    //   }),
-    // ],
-  ];
+	return [
+		[
+			urlPlus(btnText, payUrl, {
+				icon_custom_emoji_id: isFiat
+					? emojis.premium.forButtons.card
+					: beautyCurrency(currency),
+			}),
+		],
+	];
 };
 
 export const afterPayKeyboard = (channelUrl: string) => {
-  return [
-    [
-      urlPlus(`Перейти в канал`, channelUrl, {
-        icon_custom_emoji_id: emojis.premium.forButtons.diamond,
-        style: 'primary',
-      }),
-    ],
-  ];
+	return [
+		[
+			urlPlus(`Перейти в канал`, channelUrl, {
+				icon_custom_emoji_id: emojis.premium.forButtons.diamond,
+				style: 'primary',
+			}),
+		],
+	];
 };
 
 export const payFromSubPlansKeyboard = (plans: ISubscriptionPlan[]) => {
-  if (!plans || plans.length === 0) {
-    return prePayKeyboard();
-  }
+	if (!plans || plans.length === 0) {
+		return prePayKeyboard();
+	}
 
-  const result = plans.map((plan) => {
-    const isFiat = isFiatCurrency(plan.currency);
-    const btnText = isFiat ? 'Оплатить картой' : 'Оплатить в Crypto Bot';
+	const result = plans.map((plan) => {
+		const isFiat = isFiatCurrency(plan.currency);
+		const btnText = isFiat ? 'Оплатить картой' : 'Оплатить в Crypto Bot';
 
-    return [
-      callbackPlus(
-        btnText,
-        `pay-neuroluv_club-${plan.price}-${plan.currency}`,
-        {
-          icon_custom_emoji_id: isFiat
-            ? emojis.premium.forButtons.card
-            : emojis.premium.forButtons.cryptoBot,
-        },
-      ),
-    ];
-  });
+		return [
+			callbackPlus(
+				btnText,
+				`pay-neuroluv_club-${plan.price}-${plan.currency}`,
+				{
+					icon_custom_emoji_id: isFiat
+						? emojis.premium.forButtons.card
+						: emojis.premium.forButtons.cryptoBot,
+				},
+			),
+		];
+	});
 
-  return [...result, ...goToHomeKeyboard()];
+	return [...result, ...goToHomeKeyboard()];
 };

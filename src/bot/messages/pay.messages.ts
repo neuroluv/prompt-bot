@@ -1,27 +1,32 @@
-import { emojis } from 'lib/utils';
+import type { Receipt } from '@a2seven/yoo-checkout';
 import { SUPPORT_USERNAME } from 'lib/common';
-import { IPayment } from 'lib/types/directus';
+import type { IPayment } from 'lib/types/directus';
+import { beautyCurrency, emojis } from 'lib/utils';
 
 export const payMessages = {
-  // TODO: убрать предупреждения
-  prePay: `${emojis.premium.robot} <b>Нейролюб Клуб</b> – это закрытый клуб для тех, кто хочет погрузиться в мир нейросетей и AI на более глубоком уровне. В клубе ты найдёшь:\n\n${emojis.premium.numbers[1]} Эксклюзивные материалы и гайды по работе с нейросетями\n${emojis.premium.numbers[2]} Регулярные вебинары и мастер-классы от экспертов в области AI\n${emojis.premium.numbers[3]} Поддержку и общение с единомышленниками\n\nЕсли тебе интересно развиваться в этом направлении, присоединяйся к <b>Нейролюб Клубу</b>! Это отличный способ получить доступ к ценным ресурсам и поддержке сообщества.\n\n<i>Оплата временно не работает.</i>`,
+	prePay: `${emojis.premium.robot} <b>Нейролюб Клуб</b> – это закрытый клуб для тех, кто хочет погрузиться в мир нейросетей и AI на более глубоком уровне. В клубе ты найдёшь:\n\n${emojis.premium.numbers[1]} Эксклюзивные материалы и гайды по работе с нейросетями\n${emojis.premium.numbers[2]} Регулярные вебинары и мастер-классы от экспертов в области AI\n${emojis.premium.numbers[3]} Поддержку и общение с единомышленниками\n\nЕсли тебе интересно развиваться в этом направлении, присоединяйся к <b>Нейролюб Клубу</b>! Это отличный способ получить доступ к ценным ресурсам и поддержке сообщества.`,
 
-  pay: (supportUsername: string) =>
-    `<b>Оплата доступна по русским картам ${emojis.premium.card}</b>\n\n<i>Если у тебя возникнут вопросы или проблемы с оплатой, не стесняйся обращаться в нашу поддержку – <b>@${supportUsername}</b></i>\n\n<i>Оплата временно не работает.</i>`,
+	pay: (supportUsername: string) =>
+		`<b>Оплата доступна по русским картам ${emojis.premium.card}</b>\n\n<i>Если у тебя возникнут вопросы или проблемы с оплатой, не стесняйся обращаться в нашу поддержку – <b>@${supportUsername}</b></i>`,
 
-  cryptoPay: (supportUsername: string) =>
-    `<b>Оплата доступна через Crypto Bot ${emojis.premium.cryptoBot}</b>\n\n<i>Если у тебя возникнут вопросы или проблемы с оплатой, не стесняйся обращаться в нашу поддержку – <b>@${supportUsername}</b></i>\n\n<i>Оплата временно не работает.</i>`,
+	cryptoPay: (supportUsername: string) =>
+		`<b>Оплата доступна через Crypto Bot ${emojis.premium.cryptoBot}</b>\n\n<i>Если у тебя возникнут вопросы или проблемы с оплатой, не стесняйся обращаться в нашу поддержку – <b>@${supportUsername}</b></i>`,
 
-  success: `${emojis.premium.heartPixel} <b>Оплата прошла успешно!</b> Ты получил доступ к каналу.`,
+	success: `${emojis.premium.heartPixel} <b>Оплата прошла успешно!</b> Ты получил доступ к каналу.`,
+	receipt: (receipt: Receipt) => `
+${emojis.task} <b>Ваш чек об оплате</b>
+<b>Сумма платежа:</b> ${receipt.items[0].amount.value} ${beautyCurrency(receipt.items[0].amount.currency, false)}
+<b>ID транзакции:</b> ${receipt.payment_id}
+<b>Дата платежа:</b> ${new Date(receipt.registered_at).toLocaleString('ru')}`,
 
-  errorCreate: (error?: string) =>
-    `${error ? `<blockquote><code>Сообщение ошибки: ${error}</code></blockquote>\n\n` : ''}${emojis.premium.robot} Произошла ошибка при создании платежа. За помощью обратитесь к нашей поддержке – @${SUPPORT_USERNAME}`,
+	errorCreate: (error?: string) =>
+		`${error ? `<blockquote><code>Сообщение ошибки: ${error}</code></blockquote>\n\n` : ''}${emojis.premium.robot} Произошла ошибка при создании платежа. За помощью обратитесь к нашей поддержке – @${SUPPORT_USERNAME}`,
 
-  sendAdminSuccess: (payment: IPayment) => {
-    return `
-<b>${emojis.checkmark} Оплата №${payment.provider_payment_id} прошла успешно!</b>
+	sendAdminSuccess: (payment: IPayment) => {
+		return `
+<b>${emojis.checkmark} Оплата №${payment.id} прошла успешно!</b>
 
 ${emojis.premium.card} <b>Сумма:</b> ${payment.amount} ${payment.currency} – ${payment.provider}
     `;
-  },
+	},
 };
