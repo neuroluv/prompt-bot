@@ -3,13 +3,13 @@ import type { SceneContext, WizardContext } from 'telegraf/scenes';
 import type { Message } from 'telegraf/types';
 
 export const getMessageFromCtx = (
-  ctx: WizardContext | SceneContext | Context,
+	ctx: WizardContext | SceneContext | Context,
 ): string | null => {
-  const text = ctx.message as Message.TextMessage;
+	const text = ctx.message as Message.TextMessage;
 
-  if (text && text.text) {
-    return (ctx.message as Message.TextMessage).text;
-  }
+	if (text && text.text) {
+		return (ctx.message as Message.TextMessage).text;
+	}
 
-  return null;
+	return null;
 };

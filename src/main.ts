@@ -4,25 +4,25 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.useLogger(new SystemLoggerService());
-  const configService = app.get(ConfigService);
+	const app = await NestFactory.create(AppModule);
+	app.useLogger(new SystemLoggerService());
+	const configService = app.get(ConfigService);
 
-  const systemLogger = new SystemLoggerService();
-  systemLogger.setContext('Main');
+	const systemLogger = new SystemLoggerService();
+	systemLogger.setContext('Main');
 
-  app.setGlobalPrefix('api');
-  app.useGlobalInterceptors();
-  app.enableCors({
-    credentials: true,
-    origin: '*',
-    methods: ['GET', 'POST', 'DELETE', 'PATCH'],
-  });
+	app.setGlobalPrefix('api');
+	app.useGlobalInterceptors();
+	app.enableCors({
+		credentials: true,
+		origin: '*',
+		methods: ['GET', 'POST', 'DELETE', 'PATCH'],
+	});
 
-  const PORT = configService.get('PORT') || 3002;
+	const PORT = configService.get('PORT') || 3002;
 
-  await app.listen(PORT, () => {
-    systemLogger.startApp(PORT, process.env.NODE_ENV);
-  });
+	await app.listen(PORT, () => {
+		systemLogger.startApp(PORT, process.env.NODE_ENV);
+	});
 }
 bootstrap();

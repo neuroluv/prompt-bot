@@ -9,37 +9,37 @@ import { Context, Input } from 'telegraf';
 
 @Injectable()
 export class ChannelService {
-  constructor(private readonly loggerService: SystemLoggerService) {
-    this.loggerService.setContext(ChannelService.name);
-  }
+	constructor(private readonly loggerService: SystemLoggerService) {
+		this.loggerService.setContext(ChannelService.name);
+	}
 
-  // Проверка на подписку пользователя на канал
-  async isUserSubs(ctx: Context) {
-    try {
-      const member = await ctx.telegram.getChatMember(
-        getNormalChatId(CHANNELS_LINKS[0].value),
-        ctx.from.id,
-      );
+	// Проверка на подписку пользователя на канал
+	async isUserSubs(ctx: Context) {
+		try {
+			const member = await ctx.telegram.getChatMember(
+				getNormalChatId(CHANNELS_LINKS[0].value),
+				ctx.from.id,
+			);
 
-      const isUserIncludes = GOOD_MEMBER_STATUSES.includes(member.status);
-      if (!isUserIncludes) {
-        await ctx.replyWithPhoto(
-          Input.fromLocalFile(
-            join(__dirname, '..', '..', '..', 'files', 'error_cat.jpeg'),
-          ),
-          {
-            caption: mainMessages.needSubscribe,
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: channelsKeyboard([CHANNELS_LINKS[0]]),
-            },
-          },
-        );
-      }
-      return isUserIncludes;
-    } catch (error) {
-      this.loggerService.error(error, ChannelService.name);
-      return false;
-    }
-  }
+			const isUserIncludes = GOOD_MEMBER_STATUSES.includes(member.status);
+			if (!isUserIncludes) {
+				await ctx.replyWithPhoto(
+					Input.fromLocalFile(
+						join(__dirname, '..', '..', '..', 'files', 'error_cat.jpeg'),
+					),
+					{
+						caption: mainMessages.needSubscribe,
+						parse_mode: 'HTML',
+						reply_markup: {
+							inline_keyboard: channelsKeyboard([CHANNELS_LINKS[0]]),
+						},
+					},
+				);
+			}
+			return isUserIncludes;
+		} catch (error) {
+			this.loggerService.error(error, ChannelService.name);
+			return false;
+		}
+	}
 }

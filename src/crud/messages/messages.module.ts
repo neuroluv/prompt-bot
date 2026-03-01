@@ -8,23 +8,23 @@ import { MessagesController } from './messages.controller';
 import { MessagesService } from './messages.service';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      envFilePath: ENV_NAMES.ENV_PATH(process.env.NODE_ENV),
-      isGlobal: true,
-    }),
-    TelegrafModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        token: configService.get(ENV_NAMES.TELEGRAM_BOT_TOKEN),
-        middlewares: [session()],
-      }),
-    }),
-    SystemLoggerModule,
-  ],
-  controllers: [MessagesController],
-  providers: [MessagesService],
-  exports: [MessagesService],
+	imports: [
+		ConfigModule.forRoot({
+			envFilePath: ENV_NAMES.ENV_PATH(process.env.NODE_ENV),
+			isGlobal: true,
+		}),
+		TelegrafModule.forRootAsync({
+			imports: [ConfigModule],
+			inject: [ConfigService],
+			useFactory: async (configService: ConfigService) => ({
+				token: configService.get(ENV_NAMES.TELEGRAM_BOT_TOKEN),
+				middlewares: [session()],
+			}),
+		}),
+		SystemLoggerModule,
+	],
+	controllers: [MessagesController],
+	providers: [MessagesService],
+	exports: [MessagesService],
 })
 export class MessagesModule {}

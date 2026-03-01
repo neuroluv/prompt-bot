@@ -3,8 +3,8 @@ import { SystemLoggerModule } from 'config';
 import { CmsService } from './cms.service';
 
 @Module({
-  imports: [SystemLoggerModule],
-  providers: [CmsService],
-  exports: [CmsService],
+	imports: [SystemLoggerModule],
+	providers: [CmsService],
+	exports: [CmsService],
 })
 export class CmsModule {}

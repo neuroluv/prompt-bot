@@ -50,6 +50,7 @@
     "telegraf-session-local": "^2.1.1"
   },
   "devDependencies": {
+    "@kireevdev/core": "^1.0.2",
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",
