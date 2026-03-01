@@ -41,6 +41,7 @@
     "class-validator": "^0.14.3",
     "cross-env": "^10.1.0",
     "crypto-bot-api": "^0.3.6",
+    "nalog.ru": "^1.0.1",
     "nestjs-telegraf": "^2.9.1",
     "nestjs-uuid": "^0.1.4",
     "nestjs-yookassa": "^2.3.6",

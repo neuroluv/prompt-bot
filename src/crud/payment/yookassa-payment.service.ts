@@ -6,18 +6,18 @@ import {
 } from '@a2seven/yoo-checkout';
 import { createItem, readItems, updateItems } from '@directus/sdk';
 import {
+	forwardRef,
 	Inject,
 	Injectable,
 	InternalServerErrorException,
-	forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-	YOOKASSA_NOTIFICATION_FIELDS,
 	getRawNotificationEvent,
 	getRawNotificationObjectId,
 	isPaymentNotificationEnvelope,
 	normalizePaymentStatus,
+	YOOKASSA_NOTIFICATION_FIELDS,
 } from '@utils';
 import { AxiosError } from 'axios';
 import { BotService } from 'bot/bot.service';
@@ -29,6 +29,7 @@ import { UserSubscriptionsService } from 'crud/subscription/users-subscriptions.
 import { YooKassaNotification } from 'lib/types';
 import type { IPayment, ISubscriptionPlan } from 'lib/types/directus';
 import { PaymentService } from './payment.service';
+import { ReceiptService } from './receipt.service';
 
 @Injectable()
 export class YookassaPaymentService {
@@ -45,6 +46,7 @@ export class YookassaPaymentService {
 		private readonly bot: BotService,
 		@Inject(forwardRef(() => PaymentService))
 		private readonly paymentService: PaymentService,
+		private readonly receiptService: ReceiptService,
 	) {
 		this.yookassaShopId = this.config.getOrThrow('YOOKASSA_SHOP_ID');
 		this.yookassaKey = this.config.getOrThrow('YOOKASSA_KEY');
@@ -58,13 +60,18 @@ export class YookassaPaymentService {
 	async findByTelegramId(
 		telegramId: number | bigint,
 	): Promise<IPayment | null> {
-		const existedPayment = await this.cms.directus.request(
+		const activePaymentStatuses: ReadonlyArray<IPayment['status']> = [
+			'created',
+			'pending',
+		];
+		const idempotenceKeyPrefix = `${telegramId.toString()}-`;
+		const [existedPayment] = await this.cms.directus.request(
 			readItems('payments', {
 				filter: {
 					_and: [
 						{
-							idempotence_key: {
-								_contains: telegramId.toString(),
+							provider: {
+								_eq: 'yookassa',
 							},
 						},
 						{
@@ -81,16 +88,27 @@ export class YookassaPaymentService {
 								},
 							],
 						},
+						{
+							idempotence_key: {
+								_starts_with: idempotenceKeyPrefix,
+							},
+						},
 					],
 				},
+				limit: 1,
+				sort: ['-date_created'],
 			}),
 		);
 
-		if (!existedPayment[0] || !existedPayment[0].id) {
+		if (!existedPayment || !existedPayment.id) {
 			return null;
 		}
 
-		return existedPayment[0];
+		if (!activePaymentStatuses.includes(existedPayment.status)) {
+			return null;
+		}
+
+		return existedPayment;
 	}
 
 	async findOrCreate(
@@ -107,6 +125,12 @@ export class YookassaPaymentService {
 			isPaymentExist.provider_payment_id,
 		);
 		if (!yookassaPayment) {
+			return await this.create(telegramId, plan);
+		}
+		if (
+			yookassaPayment.status !== 'pending' &&
+			yookassaPayment.status !== 'waiting_for_capture'
+		) {
 			return await this.create(telegramId, plan);
 		}
 
@@ -303,6 +327,27 @@ export class YookassaPaymentService {
 				user: user,
 			});
 
+			// TODO: добавить создание чека
+
+			try {
+				const newNalogIncome = await this.receiptService.newIncome({
+					amount: 10,
+					name: 'Оплата подписки на приватный канал',
+					quantity: 1,
+				});
+
+				console.log(newNalogIncome);
+
+				const findedReceipt = await this.receiptService.getReceipt(
+					newNalogIncome.approvedReceiptUuid,
+				);
+
+				console.log('find receipt');
+				console.log(findedReceipt);
+			} catch (error) {
+				console.log(error);
+			}
+
 			try {
 				await this.bot.telegram.sendMessage(telegramId, payMessages.success, {
 					parse_mode: 'HTML',
@@ -310,9 +355,6 @@ export class YookassaPaymentService {
 						inline_keyboard: afterPayKeyboard(inviteLink),
 					},
 				});
-
-				// TODO: добавить чек
-				// const userEmail = this.extractEmail(body);
 
 				await this.bot.sendAdminMessage({
 					text: payMessages.sendAdminSuccess(existingPayment),

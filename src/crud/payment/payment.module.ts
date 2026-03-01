@@ -7,6 +7,7 @@ import { SubscriptionModule } from 'crud/subscription';
 import { CryptoBotPaymentService } from './cryptobot-payment.service';
 import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
+import { ReceiptService } from './receipt.service';
 import { YookassaPaymentService } from './yookassa-payment.service';
 
 @Module({
@@ -22,7 +23,13 @@ import { YookassaPaymentService } from './yookassa-payment.service';
 		YookassaPaymentService,
 		CryptoBotPaymentService,
 		ConfigService,
+		ReceiptService,
 	],
-	exports: [PaymentService, YookassaPaymentService, CryptoBotPaymentService],
+	exports: [
+		PaymentService,
+		YookassaPaymentService,
+		CryptoBotPaymentService,
+		ReceiptService,
+	],
 })
 export class PaymentModule {}

@@ -6,7 +6,7 @@ import { CryptoBotPaymentService, YookassaPaymentService } from 'crud/payment';
 import { SubscriptionPlanService } from 'crud/subscription';
 import { CHANNELS_LINKS } from 'lib/common';
 import { getValueFromAction } from 'lib/helpers';
-import { PAY_NEUROLUV_CLUB_CURRENCY_REGEX, isFiatCurrency } from 'lib/utils';
+import { isFiatCurrency, PAY_NEUROLUV_CLUB_CURRENCY_REGEX } from 'lib/utils';
 import {
 	Action,
 	Command,
