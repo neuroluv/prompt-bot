@@ -329,24 +329,24 @@ export class YookassaPaymentService {
 
 			// TODO: добавить создание чека
 
-			try {
-				const newNalogIncome = await this.receiptService.newIncome({
-					amount: 10,
-					name: 'Оплата подписки на приватный канал',
-					quantity: 1,
-				});
+			// try {
+			// 	const newNalogIncome = await this.receiptService.newIncome({
+			// 		amount: 10,
+			// 		name: 'Оплата подписки на приватный канал',
+			// 		quantity: 1,
+			// 	});
 
-				console.log(newNalogIncome);
+			// 	console.log(newNalogIncome);
 
-				const findedReceipt = await this.receiptService.getReceipt(
-					newNalogIncome.approvedReceiptUuid,
-				);
+			// 	const findedReceipt = await this.receiptService.getReceipt(
+			// 		newNalogIncome.approvedReceiptUuid,
+			// 	);
 
-				console.log('find receipt');
-				console.log(findedReceipt);
-			} catch (error) {
-				console.log(error);
-			}
+			// 	console.log('find receipt');
+			// 	console.log(findedReceipt);
+			// } catch (error) {
+			// 	console.log(error);
+			// }
 
 			try {
 				await this.bot.telegram.sendMessage(telegramId, payMessages.success, {

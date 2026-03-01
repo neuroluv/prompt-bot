@@ -17,8 +17,8 @@ export class ReceiptService {
 	inn: string;
 	constructor(private readonly config: ConfigService) {
 		// this.api = new ApiClient(this.config.getOrThrow('NALOG_API_KEY'));
-		this.inn = this.config.getOrThrow('NALOG_INN');
-		this.init();
+		// this.inn = this.config.getOrThrow('NALOG_INN');
+		// this.init();
 	}
 
 	async init() {
