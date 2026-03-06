@@ -29,7 +29,6 @@ import { UserSubscriptionsService } from 'crud/subscription/users-subscriptions.
 import { YooKassaNotification } from 'lib/types';
 import type { IPayment, ISubscriptionPlan } from 'lib/types/directus';
 import { PaymentService } from './payment.service';
-import { ReceiptService } from './receipt.service';
 
 @Injectable()
 export class YookassaPaymentService {
@@ -46,7 +45,6 @@ export class YookassaPaymentService {
 		private readonly bot: BotService,
 		@Inject(forwardRef(() => PaymentService))
 		private readonly paymentService: PaymentService,
-		private readonly receiptService: ReceiptService,
 	) {
 		this.yookassaShopId = this.config.getOrThrow('YOOKASSA_SHOP_ID');
 		this.yookassaKey = this.config.getOrThrow('YOOKASSA_KEY');
@@ -151,9 +149,6 @@ export class YookassaPaymentService {
 				telegram_id: telegramId.toString(),
 				idempotence_key: idempotenceKey,
 				email: 'kireev.kirill2004@mail.ru',
-			},
-			payment_method_data: {
-				type: 'bank_card',
 			},
 			capture: true,
 			confirmation: {
@@ -334,6 +329,7 @@ export class YookassaPaymentService {
 			// 		amount: 10,
 			// 		name: 'Оплата подписки на приватный канал',
 			// 		quantity: 1,
+			// 		paymentType: 'ELECTRONIC',
 			// 	});
 
 			// 	console.log(newNalogIncome);

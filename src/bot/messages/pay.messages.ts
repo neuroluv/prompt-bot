@@ -1,7 +1,7 @@
-import type { Receipt } from '@a2seven/yoo-checkout';
 import { SUPPORT_USERNAME } from 'lib/common';
 import type { IPayment } from 'lib/types/directus';
 import { beautyCurrency, emojis } from 'lib/utils';
+import { ReceiptJson } from 'lknpd-nalog-api-ts';
 
 export const payMessages = {
 	prePay: `
@@ -43,11 +43,11 @@ ${emojis.task} <a href="${privacyUrl}">Политика обработки пе�
 ${emojis.premium.heartPixel} <b>Оплата прошла успешно!</b>
 
 Ты получил доступ к каналу! Нажимай на кнопку ниже ${emojis.premium.handDown}`,
-	receipt: (receipt: Receipt) => `
+	receipt: (receipt: ReceiptJson) => `
 ${emojis.task} <b>Ваш чек об оплате</b>
-<b>Сумма платежа:</b> ${receipt.items[0].amount.value} ${beautyCurrency(receipt.items[0].amount.currency, false)}
-<b>ID транзакции:</b> ${receipt.payment_id}
-<b>Дата платежа:</b> ${new Date(receipt.registered_at).toLocaleString('ru')}`,
+<b>Сумма платежа:</b> ${receipt.totalAmount} ${beautyCurrency('RUB', false)}
+<b>ID транзакции:</b> ${receipt.receiptId}
+<b>Дата платежа:</b> ${new Date(receipt.operationTime).toLocaleString('ru')}`,
 
 	errorCreate: (error?: string) =>
 		`${error ? `<blockquote><code>Сообщение ошибки: ${error}</code></blockquote>\n\n` : ''}${emojis.premium.robot} Произошла ошибка при создании платежа. За помощью обратитесь к нашей поддержке – @${SUPPORT_USERNAME}`,
