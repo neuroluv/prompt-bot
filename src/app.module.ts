@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { BotModule } from 'bot';
 import { ConstantsModule } from 'config/constants';
 import { MessagesModule } from 'crud';
+import { HealthModule } from 'crud/health';
 import { ENV_NAMES } from 'lib/common';
 import { CmsModule } from './cms';
 import { ChannelModule } from './crud/channel/channel.module';
@@ -24,6 +25,7 @@ import { SubscriptionModule } from './crud/subscription/subscription.module';
 		MailingModule,
 		PaymentModule,
 		SubscriptionModule,
+		HealthModule,
 	],
 	controllers: [],
 	providers: [],
