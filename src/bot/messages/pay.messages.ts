@@ -15,7 +15,12 @@ ${emojis.premium.numbers[3]} <b>Поддержку и общение</b> с ед
 
 	pay: (supportUsername: string, privacyUrl: string, offerUrl: string) =>
 		`
-<b>Оплата доступна по русским картам ${emojis.premium.card}</b>
+<b>Оплата доступна несколькими способами:</b>
+
+– ${emojis.premium.visa} Банковской картой
+– ${emojis.premium.sberPay} SberPay
+– ${emojis.premium.tpay} T-Pay
+– ${emojis.premium.sbp} СБП
 	
 <i>Если у тебя возникнут вопросы или проблемы с оплатой, не стесняйся обращаться в нашу поддержку – <b>@${supportUsername}</b></i>
 
