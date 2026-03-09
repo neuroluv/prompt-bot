@@ -166,7 +166,7 @@ export class BotUpdate {
 		);
 		try {
 			if (isFiat) {
-				createdPayment = await this.yookassaPaymentService.create(
+				createdPayment = await this.yookassaPaymentService.findOrCreate(
 					ctx.from.id ? ctx.from.id : ctx.callbackQuery.from.id,
 					plan,
 				);
@@ -177,10 +177,21 @@ export class BotUpdate {
 				);
 			}
 
+			const privacyUrl = this.constants.PRIVACY_URL;
+			const offerUrl = this.constants.OFFER_URL;
+
 			await ctx.reply(
 				isFiat
-					? payMessages.pay(this.constants.SUPPORT_USERNAME)
-					: payMessages.cryptoPay(this.constants.SUPPORT_USERNAME),
+					? payMessages.pay(
+							this.constants.SUPPORT_USERNAME,
+							privacyUrl,
+							offerUrl,
+						)
+					: payMessages.cryptoPay(
+							this.constants.SUPPORT_USERNAME,
+							privacyUrl,
+							offerUrl,
+						),
 				{
 					parse_mode: 'HTML',
 					reply_markup: {

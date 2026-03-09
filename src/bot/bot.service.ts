@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MessagesService } from 'crud';
+import { MessagesService } from 'crud/messages/messages.service';
 import { Telegraf } from 'telegraf';
 import { ChatInviteLink } from 'telegraf/types';
 import { SystemLoggerService } from '@/config';
@@ -39,5 +39,15 @@ export class BotService {
 		return invite;
 	}
 
-	sendMessageByChatId = this.messagesService.sendMessageByChatId;
+	async sendMessageByChatId(
+		...args: Parameters<MessagesService['sendMessageByChatId']>
+	) {
+		return this.messagesService.sendMessageByChatId(...args);
+	}
+
+	async sendAdminMessage(
+		...args: Parameters<MessagesService['sendAdminMessage']>
+	) {
+		return this.messagesService.sendAdminMessage(...args);
+	}
 }

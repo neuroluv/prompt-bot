@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { SystemLoggerService } from 'config';
 import type { YooKassaNotification } from 'lib/types';
 import type { ICryptoPayUpdate } from 'lib/types/crypto-bot';
+import { YookassaWebhook } from 'nestjs-yookassa';
 import { CryptoBotPaymentService } from './cryptobot-payment.service';
 import { YookassaPaymentService } from './yookassa-payment.service';
 
@@ -16,6 +17,7 @@ export class PaymentController {
 	}
 
 	@Post('notification')
+	@YookassaWebhook()
 	@HttpCode(200)
 	async getNotifications(@Body() body: YooKassaNotification<unknown>) {
 		void this.yookassaPaymentService.processNotificationSafely(body);

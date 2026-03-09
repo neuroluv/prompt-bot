@@ -88,6 +88,7 @@ export class CmsService {
 			is_bot: Boolean(ctx.from.is_bot),
 			is_premium: Boolean((ctx.from as any).is_premium),
 			language_code: ctx.from.language_code ?? null,
+			is_blocked_the_bot: false,
 		};
 
 		// 1) ищем пользователя

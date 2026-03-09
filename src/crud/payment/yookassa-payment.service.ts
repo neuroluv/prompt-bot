@@ -4,7 +4,7 @@ import {
 	Payment,
 	YooCheckout,
 } from '@a2seven/yoo-checkout';
-import { createItem, updateItems } from '@directus/sdk';
+import { createItem, readItems, updateItems } from '@directus/sdk';
 import {
 	forwardRef,
 	Inject,
@@ -25,16 +25,17 @@ import { afterPayKeyboard } from 'bot/keyboards';
 import { payMessages } from 'bot/messages';
 import { CmsService } from 'cms/cms.service';
 import { SystemLoggerService } from 'config';
+import { ConstantsService } from 'config/constants';
 import { UserSubscriptionsService } from 'crud/subscription/users-subscriptions.service';
 import { YooKassaNotification } from 'lib/types';
-import type { ISubscriptionPlan } from 'lib/types/directus';
+import type { IPayment, ISubscriptionPlan } from 'lib/types/directus';
 import { PaymentService } from './payment.service';
 
 @Injectable()
 export class YookassaPaymentService {
 	private readonly yookassaShopId: string;
 	private readonly yookassaKey: string;
-	private readonly yooKassa: YooCheckout;
+	private readonly yookassa: YooCheckout;
 
 	constructor(
 		private readonly config: ConfigService,
@@ -45,14 +46,95 @@ export class YookassaPaymentService {
 		private readonly bot: BotService,
 		@Inject(forwardRef(() => PaymentService))
 		private readonly paymentService: PaymentService,
+		private readonly constants: ConstantsService,
 	) {
 		this.yookassaShopId = this.config.getOrThrow('YOOKASSA_SHOP_ID');
 		this.yookassaKey = this.config.getOrThrow('YOOKASSA_KEY');
 
-		this.yooKassa = new YooCheckout({
+		this.yookassa = new YooCheckout({
 			secretKey: this.yookassaKey,
 			shopId: this.yookassaShopId,
 		});
+	}
+
+	async findByTelegramId(
+		telegramId: number | bigint,
+	): Promise<IPayment | null> {
+		const activePaymentStatuses: ReadonlyArray<IPayment['status']> = [
+			'created',
+			'pending',
+		];
+		const idempotenceKeyPrefix = `${telegramId.toString()}-`;
+		const [existedPayment] = await this.cms.directus.request(
+			readItems('payments', {
+				filter: {
+					_and: [
+						{
+							provider: {
+								_eq: 'yookassa',
+							},
+						},
+						{
+							_or: [
+								{
+									status: {
+										_eq: 'created',
+									},
+								},
+								{
+									status: {
+										_eq: 'pending',
+									},
+								},
+							],
+						},
+						{
+							idempotence_key: {
+								_starts_with: idempotenceKeyPrefix,
+							},
+						},
+					],
+				},
+				limit: 1,
+				sort: ['-date_created'],
+			}),
+		);
+
+		if (!existedPayment || !existedPayment.id) {
+			return null;
+		}
+
+		if (!activePaymentStatuses.includes(existedPayment.status)) {
+			return null;
+		}
+
+		return existedPayment;
+	}
+
+	async findOrCreate(
+		telegramId: number | bigint,
+		plan: ISubscriptionPlan,
+	): Promise<Payment | null> {
+		const isPaymentExist = await this.findByTelegramId(telegramId);
+
+		if (!isPaymentExist) {
+			return await this.create(telegramId, plan);
+		}
+
+		const yookassaPayment = await this.yookassa.getPayment(
+			isPaymentExist.provider_payment_id,
+		);
+		if (!yookassaPayment) {
+			return await this.create(telegramId, plan);
+		}
+		if (
+			yookassaPayment.status !== 'pending' &&
+			yookassaPayment.status !== 'waiting_for_capture'
+		) {
+			return await this.create(telegramId, plan);
+		}
+
+		return yookassaPayment;
 	}
 
 	async create(
@@ -68,9 +150,7 @@ export class YookassaPaymentService {
 			metadata: {
 				telegram_id: telegramId.toString(),
 				idempotence_key: idempotenceKey,
-			},
-			payment_method_data: {
-				type: 'bank_card',
+				email: 'kireev.kirill2004@mail.ru',
 			},
 			capture: true,
 			confirmation: {
@@ -80,7 +160,7 @@ export class YookassaPaymentService {
 		};
 
 		try {
-			const payment = await this.yooKassa.createPayment(
+			const payment = await this.yookassa.createPayment(
 				payload,
 				idempotenceKey,
 			);
@@ -244,12 +324,43 @@ export class YookassaPaymentService {
 				user: user,
 			});
 
+			// TODO: добавить создание чека
+
+			// try {
+			// 	const newNalogIncome = await this.receiptService.newIncome({
+			// 		amount: 10,
+			// 		name: 'Оплата подписки на приватный канал',
+			// 		quantity: 1,
+			// 		paymentType: 'ELECTRONIC',
+			// 	});
+
+			// 	console.log(newNalogIncome);
+
+			// 	const findedReceipt = await this.receiptService.getReceipt(
+			// 		newNalogIncome.approvedReceiptUuid,
+			// 	);
+
+			// 	console.log('find receipt');
+			// 	console.log(findedReceipt);
+			// } catch (error) {
+			// 	console.log(error);
+			// }
+
 			try {
-				await this.bot.telegram.sendMessage(telegramId, payMessages.success, {
-					parse_mode: 'HTML',
-					reply_markup: {
-						inline_keyboard: afterPayKeyboard(inviteLink),
+				await this.bot.telegram.sendMessage(
+					telegramId,
+					payMessages.successWithReceipt(this.constants.SUPPORT_USERNAME),
+					{
+						parse_mode: 'HTML',
+						reply_markup: {
+							inline_keyboard: afterPayKeyboard(inviteLink),
+						},
 					},
+				);
+
+				await this.bot.sendAdminMessage({
+					text: payMessages.sendAdminSuccess(existingPayment),
+					title: 'Произошла оплата приватного телеграм канала!',
 				});
 			} catch (sendError) {
 				await this.paymentService.markLinkAsNotSent(paymentId);
@@ -282,5 +393,20 @@ export class YookassaPaymentService {
 
 		const telegramId = Number(rawTelegramId);
 		return Number.isFinite(telegramId) ? telegramId : null;
+	}
+
+	private extractEmail(body: YooKassaNotification<Payment>): string | null {
+		const metadata = body?.object?.metadata as
+			| Record<string, unknown>
+			| undefined;
+		const rawEmail = metadata?.email;
+
+		if (rawEmail === undefined || rawEmail === null) {
+			return null;
+		}
+
+		const email = String(rawEmail);
+
+		return email;
 	}
 }
