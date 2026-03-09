@@ -25,6 +25,7 @@ import { afterPayKeyboard } from 'bot/keyboards';
 import { payMessages } from 'bot/messages';
 import { CmsService } from 'cms/cms.service';
 import { SystemLoggerService } from 'config';
+import { ConstantsService } from 'config/constants';
 import { UserSubscriptionsService } from 'crud/subscription/users-subscriptions.service';
 import { YooKassaNotification } from 'lib/types';
 import type { IPayment, ISubscriptionPlan } from 'lib/types/directus';
@@ -45,6 +46,7 @@ export class YookassaPaymentService {
 		private readonly bot: BotService,
 		@Inject(forwardRef(() => PaymentService))
 		private readonly paymentService: PaymentService,
+		private readonly constants: ConstantsService,
 	) {
 		this.yookassaShopId = this.config.getOrThrow('YOOKASSA_SHOP_ID');
 		this.yookassaKey = this.config.getOrThrow('YOOKASSA_KEY');
@@ -345,12 +347,16 @@ export class YookassaPaymentService {
 			// }
 
 			try {
-				await this.bot.telegram.sendMessage(telegramId, payMessages.success, {
-					parse_mode: 'HTML',
-					reply_markup: {
-						inline_keyboard: afterPayKeyboard(inviteLink),
+				await this.bot.telegram.sendMessage(
+					telegramId,
+					payMessages.successWithReceipt(this.constants.SUPPORT_USERNAME),
+					{
+						parse_mode: 'HTML',
+						reply_markup: {
+							inline_keyboard: afterPayKeyboard(inviteLink),
+						},
 					},
-				});
+				);
 
 				await this.bot.sendAdminMessage({
 					text: payMessages.sendAdminSuccess(existingPayment),

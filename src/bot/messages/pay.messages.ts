@@ -43,6 +43,12 @@ ${emojis.task} <a href="${privacyUrl}">Политика обработки пе�
 ${emojis.premium.heartPixel} <b>Оплата прошла успешно!</b>
 
 Ты получил доступ к каналу! Нажимай на кнопку ниже ${emojis.premium.handDown}`,
+	successWithReceipt: (supportUsername: string) => `
+${emojis.premium.heartPixel} <b>Оплата прошла успешно!</b>
+
+${emojis.task} Если нужен чек, обращаться – <b>@${supportUsername}</b>
+
+Ты получил доступ к каналу! Нажимай на кнопку ниже ${emojis.premium.handDown}`,
 	receipt: (receipt: ReceiptJson) => `
 ${emojis.task} <b>Ваш чек об оплате</b>
 <b>Сумма платежа:</b> ${receipt.totalAmount} ${beautyCurrency('RUB', false)}
