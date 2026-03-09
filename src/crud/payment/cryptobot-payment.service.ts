@@ -57,7 +57,6 @@ export class CryptoBotPaymentService {
 				amount: plan.price,
 				asset: plan.currency as CryptoCurrencyCode,
 				acceptedAssets: ['USDT', 'TON', 'ETH'],
-				description: plan.description,
 				expiresIn: 3600, // 1 hour
 				payload: {
 					telegram_id: telegramId.toString(),
