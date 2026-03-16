@@ -1,7 +1,7 @@
 import type { ILabelValue } from 'lib/types';
 
 // Global constants
-export const CHATS = [785206267];
+export const CHATS = [785206267, 613433290];
 export const SUPPORT_USERNAME = 'neuroluv_support';
 export const CHANNELS_LINKS: ILabelValue[] = [
 	{

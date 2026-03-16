@@ -34,6 +34,7 @@ export class BotService {
 	async createOnetimeInviteLink(): Promise<ChatInviteLink> {
 		const invite = await this.bot.telegram.createChatInviteLink(this.CHAT_ID, {
 			member_limit: 1,
+			name: `Ссылка ${new Date().toLocaleDateString('ru')}`,
 		});
 
 		return invite;
