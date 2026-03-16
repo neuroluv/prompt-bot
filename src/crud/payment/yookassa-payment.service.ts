@@ -150,7 +150,6 @@ export class YookassaPaymentService {
 			metadata: {
 				telegram_id: telegramId.toString(),
 				idempotence_key: idempotenceKey,
-				email: 'kireev.kirill2004@mail.ru',
 			},
 			capture: true,
 			confirmation: {
