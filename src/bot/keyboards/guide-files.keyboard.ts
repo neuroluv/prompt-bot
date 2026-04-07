@@ -11,6 +11,11 @@ export const guideFilesKeyboard = (channel: ILabelValue) => {
 			}),
 		],
 		[
+			callbackPlus(`35 промптов`, 'download-file-prompts35', {
+				icon_custom_emoji_id: emojis.premium.forButtons.flower,
+			}),
+		],
+		[
 			callbackPlus(
 				`Как создать свою AI модель`,
 				'download-file-ai_model_guide',
