@@ -8,4 +8,5 @@ export const startScenarios = {
 	'private-club': 'neuroluv_club',
 	neuroluv_club: 'neuroluv_club',
 	'neuroluv-club': 'neuroluv_club',
+	files: 'files',
 };

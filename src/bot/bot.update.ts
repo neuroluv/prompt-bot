@@ -61,6 +61,9 @@ export class BotUpdate {
 			case startScenarios.app:
 				await this.startApp(ctx as SceneContext);
 				break;
+			case startScenarios.files:
+				await this.guideFiles(ctx as SceneContext);
+				break;
 
 			default:
 				await ctx.reply(mainMessages.hello, {
