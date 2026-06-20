@@ -9,11 +9,6 @@ export const mainKeyboard = () => {
 			}),
 		],
 		[
-			callbackPlus(`Нейролюб Клуб`, 'neuroluv_club', {
-				icon_custom_emoji_id: emojis.premium.forButtons.flower,
-			}),
-		],
-		[
 			callbackPlus(`Файлы с промптами`, 'guide_files', {
 				icon_custom_emoji_id: emojis.premium.forButtons.diamond,
 			}),

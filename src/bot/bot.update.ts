@@ -2,7 +2,6 @@ import { CheckSubscription } from 'auth';
 import { CmsService } from 'cms/cms.service';
 import { SystemLoggerService } from 'config';
 import { ConstantsService } from 'config/constants';
-import { CryptoBotPaymentService, YookassaPaymentService } from 'crud/payment';
 import { SubscriptionPlanService } from 'crud/subscription';
 import { CHANNELS_LINKS } from 'lib/common';
 import { getValueFromAction } from 'lib/helpers';
@@ -26,12 +25,7 @@ import {
 	payFromSubPlansKeyboard,
 	payKeyboard,
 } from './keyboards';
-import {
-	appMessages,
-	guideFilesMessages,
-	mainMessages,
-	payMessages,
-} from './messages';
+import { appMessages, guideFilesMessages, mainMessages } from './messages';
 import { startScenarios } from './scenarios';
 
 @Update()
@@ -42,8 +36,6 @@ export class BotUpdate {
 		private readonly logger: SystemLoggerService,
 		private readonly cms: CmsService,
 		private readonly subscriptionPlanService: SubscriptionPlanService,
-		private readonly yookassaPaymentService: YookassaPaymentService,
-		private readonly cryptoPaymentService: CryptoBotPaymentService,
 		private readonly constants: ConstantsService,
 	) {}
 
@@ -54,10 +46,6 @@ export class BotUpdate {
 		});
 
 		switch (startScenarios[value]) {
-			case startScenarios.neuroluv_club:
-				await this.prePayPrivateChannel(ctx as SceneContext);
-				break;
-
 			case startScenarios.app:
 				await this.startApp(ctx as SceneContext);
 				break;
@@ -130,93 +118,6 @@ export class BotUpdate {
 				inline_keyboard: mainKeyboard(),
 			},
 		});
-		return;
-	}
-
-	@Action('neuroluv_club')
-	@Command('club')
-	async prePayPrivateChannel(@Ctx() ctx: SceneContext) {
-		const channels = await this.subscriptionPlanService.getPlanssByIncludeSlug(
-			this.subscriptionPlanService.privateChannelSlug,
-		);
-
-		await ctx.reply(payMessages.prePay, {
-			parse_mode: 'HTML',
-			reply_markup: {
-				inline_keyboard: payFromSubPlansKeyboard(channels),
-			},
-		});
-		return;
-	}
-
-	@Action(PAY_NEUROLUV_CLUB_CURRENCY_REGEX)
-	async payPrivateChannel(@Ctx() ctx: SceneContext) {
-		const price = getValueFromAction(ctx, {
-			index: 2,
-		});
-		const currency = getValueFromAction(ctx, {
-			index: 3,
-		});
-		const loadingMessage = await ctx.reply(mainMessages.loading, {
-			parse_mode: 'HTML',
-		});
-
-		const isFiat = isFiatCurrency(currency);
-		let createdPayment;
-		const plan = await this.subscriptionPlanService.getPlanByPriceAndCurrency(
-			+price,
-			currency,
-		);
-		try {
-			if (isFiat) {
-				createdPayment = await this.yookassaPaymentService.findOrCreate(
-					ctx.from.id ? ctx.from.id : ctx.callbackQuery.from.id,
-					plan,
-				);
-			} else {
-				createdPayment = await this.cryptoPaymentService.create(
-					ctx.from.id ? ctx.from.id : ctx.callbackQuery.from.id,
-					plan,
-				);
-			}
-
-			const privacyUrl = this.constants.PRIVACY_URL;
-			const offerUrl = this.constants.OFFER_URL;
-
-			await ctx.reply(
-				isFiat
-					? payMessages.pay(
-							this.constants.SUPPORT_USERNAME,
-							privacyUrl,
-							offerUrl,
-						)
-					: payMessages.cryptoPay(
-							this.constants.SUPPORT_USERNAME,
-							privacyUrl,
-							offerUrl,
-						),
-				{
-					parse_mode: 'HTML',
-					reply_markup: {
-						inline_keyboard: payKeyboard(
-							+price,
-							currency,
-							isFiat
-								? createdPayment.confirmation.confirmation_url
-								: createdPayment.botPayUrl,
-						),
-					},
-				},
-			);
-		} catch (error) {
-			const typedError: Error = error as Error;
-			ctx.reply(payMessages.errorCreate(typedError.message), {
-				parse_mode: 'HTML',
-			});
-		} finally {
-			await ctx.deleteMessage(loadingMessage.message_id);
-		}
-
 		return;
 	}
 
