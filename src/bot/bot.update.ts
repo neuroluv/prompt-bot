@@ -3,9 +3,7 @@ import { CmsService } from 'cms/cms.service';
 import { SystemLoggerService } from 'config';
 import { ConstantsService } from 'config/constants';
 import { SubscriptionPlanService } from 'crud/subscription';
-import { CHANNELS_LINKS } from 'lib/common';
 import { getValueFromAction } from 'lib/helpers';
-import { isFiatCurrency, PAY_NEUROLUV_CLUB_CURRENCY_REGEX } from 'lib/utils';
 import {
 	Action,
 	Command,
@@ -22,8 +20,6 @@ import {
 	goToHomeKeyboard,
 	guideFilesKeyboard,
 	mainKeyboard,
-	payFromSubPlansKeyboard,
-	payKeyboard,
 } from './keyboards';
 import { appMessages, guideFilesMessages, mainMessages } from './messages';
 import { startScenarios } from './scenarios';
@@ -100,7 +96,7 @@ export class BotUpdate {
 				is_disabled: true,
 			},
 			reply_markup: {
-				inline_keyboard: guideFilesKeyboard(CHANNELS_LINKS[0]),
+				inline_keyboard: guideFilesKeyboard(),
 			},
 		});
 		return;

@@ -1,12 +1,28 @@
-import type { ILabelValue } from 'lib/types';
-
 // Global constants
 export const CHATS = [785206267, 613433290];
 export const SUPPORT_USERNAME = 'neuroluv_support';
-export const CHANNELS_LINKS: ILabelValue[] = [
+
+export interface RequiredChannel {
+	label: string;
+	chatId: string;
+	url: string;
+}
+
+export const CHANNELS_LINKS: RequiredChannel[] = [
 	{
 		label: `Нейролюб | Нейросети`,
-		value: 'NeuroLuv',
+		chatId: '@NeuroLuv',
+		url: 'https://t.me/NeuroLuv',
+	},
+	{
+		label: 'ПРОМПТзона',
+		chatId: '-1003771722409',
+		url: 'https://t.me/+rnXVz8bpiKxhNzEy',
+	},
+	{
+		label: 'ИИшная ложа',
+		chatId: '-1003585311693',
+		url: 'https://t.me/+Grg2MYLyMko2NjEy',
 	},
 ];
 export const GOOD_MEMBER_STATUSES = ['creator', 'administrator', 'member'];

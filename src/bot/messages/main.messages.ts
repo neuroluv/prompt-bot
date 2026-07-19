@@ -1,3 +1,4 @@
+import { CHANNELS_LINKS } from 'lib/common';
 import { emojis } from 'lib/utils';
 
 export const mainMessages = {
@@ -17,10 +18,12 @@ ${emojis.premium.diamond} <b>Файлы с промптами</b> – подбо
 Если захочешь - можешь вернуться и выбрать ещё один файл из доступных.`,
 
 	needSubscribe: `
-Кажется, ты ещё не подписался(ась) на канал ${emojis.premium.flower}
+Кажется, ты ещё не подписался(ась) на все каналы ${emojis.premium.flower}
 
 Чтобы я могла выдать файл, нужно:
-${emojis.premium.numbers[1]} Подписаться на мой Telegram-канал
+${emojis.premium.numbers[1]} Подписаться на три Telegram-канала:
+${CHANNELS_LINKS.map((channel) => `• <a href="${channel.url}">${channel.label}</a>`).join('\n')}
+
 ${emojis.premium.numbers[2]} Вернуться сюда и нажать «Проверить подписку»
 
 Это займёт буквально минутку ${emojis.premium.sandClock}`,

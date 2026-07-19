@@ -1,10 +1,10 @@
-import { callbackPlus, urlPlus, webAppPlus } from 'lib/helpers';
+import { callbackPlus, urlPlus } from 'lib/helpers';
 import { emojis } from 'lib/utils';
 
 export const mainKeyboard = () => {
 	const resultKeyboard = [
 		[
-		urlPlus(
+			urlPlus(
 				`Библиотека промптов`,
 				'https://neuroluv.ru/prompts?utm_source=neuroluv-telegram-bot&utm_medium=organic',
 				{

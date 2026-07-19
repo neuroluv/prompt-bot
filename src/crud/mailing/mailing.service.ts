@@ -104,7 +104,11 @@ export class MailingService {
 					replyMarkup,
 				);
 
-				ok ? sent++ : failed++;
+				if (ok) {
+					sent++;
+				} else {
+					failed++;
+				}
 
 				if ((sent + failed) % 50 === 0) await flush();
 

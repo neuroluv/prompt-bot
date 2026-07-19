@@ -1,15 +1,9 @@
-import { callbackPlus, urlPlus } from 'lib/helpers';
-import { ILabelValue } from 'lib/types';
+import { callbackPlus } from 'lib/helpers';
 import { emojis } from 'lib/utils';
 import { goToHomeKeyboard } from './go-to-home.keyboard';
 
-export const guideFilesKeyboard = (channel: ILabelValue) => {
+export const guideFilesKeyboard = () => {
 	const resultKeyboard = [
-		[
-			urlPlus(channel.label, `https://t.me/${channel.value}`, {
-				icon_custom_emoji_id: emojis.premium.forButtons.robot,
-			}),
-		],
 		[
 			callbackPlus(`35 промптов`, 'download-file-prompts35', {
 				icon_custom_emoji_id: emojis.premium.forButtons.flower,
