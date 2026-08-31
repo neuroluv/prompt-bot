@@ -1,8 +1,19 @@
-import { Body, Controller, Param, Post } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Param,
+	Post,
+	UseGuards,
+	UsePipes,
+	ValidationPipe,
+} from '@nestjs/common';
 import { ICustomMessage } from 'lib/types';
+import { GenerationNotificationDto } from './dto/generation-notification.dto';
+import { InternalTokenGuard } from './internal-token.guard';
 import { MessagesService } from './messages.service';
 
 @Controller('messages')
+@UseGuards(InternalTokenGuard)
 export class MessagesController {
 	constructor(private readonly messagesService: MessagesService) {}
 
@@ -12,5 +23,23 @@ export class MessagesController {
 		@Body() dto: ICustomMessage,
 	) {
 		return this.messagesService.sendMessageByChatId(+chatId, dto.message);
+	}
+}
+
+@Controller('notifications')
+@UseGuards(InternalTokenGuard)
+export class NotificationsController {
+	constructor(private readonly messagesService: MessagesService) {}
+
+	@Post('generation')
+	@UsePipes(
+		new ValidationPipe({
+			forbidNonWhitelisted: true,
+			transform: true,
+			whitelist: true,
+		}),
+	)
+	sendGeneration(@Body() dto: GenerationNotificationDto) {
+		return this.messagesService.sendGenerationNotification(dto);
 	}
 }

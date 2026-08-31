@@ -4,7 +4,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SystemLoggerModule } from 'config';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { session } from 'telegraf';
-import { MessagesController } from './messages.controller';
+import { InternalTokenGuard } from './internal-token.guard';
+import {
+	MessagesController,
+	NotificationsController,
+} from './messages.controller';
 import { MessagesService } from './messages.service';
 
 @Module({
@@ -23,8 +27,8 @@ import { MessagesService } from './messages.service';
 		}),
 		SystemLoggerModule,
 	],
-	controllers: [MessagesController],
-	providers: [MessagesService],
+	controllers: [MessagesController, NotificationsController],
+	providers: [InternalTokenGuard, MessagesService],
 	exports: [MessagesService],
 })
 export class MessagesModule {}

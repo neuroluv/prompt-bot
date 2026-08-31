@@ -1,27 +1,19 @@
-import { urlPlus } from 'lib/helpers';
 import { emojis } from 'lib/utils';
 import { goToHomeKeyboard } from './go-to-home.keyboard';
 
-export const appKeyboard = () => {
+export const appKeyboard = (miniAppUrl = 'https://neuroluv.ru/ai') => {
 	return [
 		[
-			urlPlus(
-				`Библиотека промптов`,
-				'https://neuroluv.ru/prompts?utm_source=neuroluv-telegram-bot&utm_medium=organic',
-				{
-					icon_custom_emoji_id: emojis.premium.forButtons.robot,
-					style: 'primary',
-				},
-			),
+			{
+				text: `${emojis.robot} Открыть Нейролюб Studio`,
+				web_app: { url: miniAppUrl },
+			},
 		],
 		[
-			urlPlus(
-				`Rina VPN – Лучший VPN`,
-				'https://t.me/rinavpn_bot?start=neuroluv_bot',
-				{
-					icon_custom_emoji_id: emojis.premium.forButtons.lightning,
-				},
-			),
+			{
+				text: `${emojis.lightning} Rina VPN – Лучший VPN`,
+				url: 'https://t.me/rinavpn_bot?start=neuroluv_bot',
+			},
 		],
 		...goToHomeKeyboard(),
 	];

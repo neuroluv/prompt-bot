@@ -81,7 +81,9 @@ export class BotUpdate {
 				is_disabled: true,
 			},
 			reply_markup: {
-				inline_keyboard: appKeyboard(),
+				inline_keyboard: appKeyboard(
+					`${this.constants.SITE_URL.replace(/\/$/, '')}/ai`,
+				),
 			},
 		});
 		return;
