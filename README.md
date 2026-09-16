@@ -26,6 +26,20 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Neuroluv administrator controls
+
+Registration alerts are delivered to every private Telegram user ID in
+`TELEGRAM_ADMIN_IDS` (comma-separated). Each administrator must open the bot and
+send `/start` at least once. Account actions call the protected Neuroluv API, so
+`NEUROLUV_API_URL` must include `/v1` and `PROMPT_BOT_INTERNAL_TOKEN` must match
+the value configured on the Neuroluv server.
+
+```dotenv
+TELEGRAM_ADMIN_IDS=123456789,987654321
+NEUROLUV_API_URL=https://api.neuroluv.ru/v1
+PROMPT_BOT_INTERNAL_TOKEN=replace-with-the-shared-secret
+```
+
 ## Project setup
 
 ```bash

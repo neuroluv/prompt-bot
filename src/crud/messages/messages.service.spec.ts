@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { SystemLoggerService } from 'config';
 import { Context, Telegraf } from 'telegraf';
 import { MessagesService } from './messages.service';
@@ -13,7 +14,7 @@ describe('MessagesService generation notifications', () => {
 			setContext: jest.fn(),
 			error: jest.fn(),
 		} as unknown as SystemLoggerService;
-		const service = new MessagesService(bot, logger);
+		const service = new MessagesService(bot, logger, config());
 
 		await service.sendGenerationNotification({
 			chatId: '123456',
@@ -52,7 +53,7 @@ describe('MessagesService generation notifications', () => {
 			setContext: jest.fn(),
 			error: jest.fn(),
 		} as unknown as SystemLoggerService;
-		const service = new MessagesService(bot, logger);
+		const service = new MessagesService(bot, logger, config());
 
 		await service.sendGenerationNotification({
 			chatId: '123456',
@@ -70,4 +71,59 @@ describe('MessagesService generation notifications', () => {
 			expect(String(message).length).toBeLessThanOrEqual(4_096);
 		}
 	});
+
+	it('fans an actionable registration notification out to every configured admin', async () => {
+		const sendMessage = jest.fn().mockResolvedValue({ message_id: 1 });
+		const bot = {
+			telegram: { sendMessage, sendPhoto: jest.fn(), sendVideo: jest.fn() },
+		} as unknown as Telegraf<Context>;
+		const logger = {
+			setContext: jest.fn(),
+			error: jest.fn(),
+		} as unknown as SystemLoggerService;
+		const service = new MessagesService(
+			bot,
+			logger,
+			config({ TELEGRAM_ADMIN_IDS: '123, 456,123' }),
+		);
+
+		const result = await service.sendAdminNotification({
+			message: '<b>Новая регистрация</b>',
+			action: {
+				type: 'user_registration',
+				userId: 'aad6cb91-05e7-436a-bf39-0de194ac9606',
+			},
+		});
+
+		expect(result).toEqual({ delivered: 2, failed: 0 });
+		expect(sendMessage).toHaveBeenCalledTimes(2);
+		expect(sendMessage.mock.calls.map(([chatId]) => chatId)).toEqual([
+			123, 456,
+		]);
+		expect(sendMessage.mock.calls[0]?.[2]?.reply_markup).toEqual(
+			expect.objectContaining({
+				inline_keyboard: expect.arrayContaining([
+					expect.arrayContaining([
+						expect.objectContaining({ text: '🚫 Заблокировать' }),
+					]),
+				]),
+			}),
+		);
+	});
 });
+
+function config(values: Record<string, string> = {}): ConfigService {
+	const environment = {
+		CMS_URL: 'https://admin.neuroluv.test',
+		TELEGRAM_ADMIN_IDS: '123',
+		...values,
+	};
+	return {
+		get: (key: string) => environment[key],
+		getOrThrow: (key: string) => {
+			const value = environment[key];
+			if (!value) throw new Error(`Missing ${key}`);
+			return value;
+		},
+	} as ConfigService;
+}

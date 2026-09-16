@@ -1,8 +1,10 @@
+import { ConfigService } from '@nestjs/config';
 import { CheckSubscription } from 'auth';
 import { CmsService } from 'cms/cms.service';
 import { SystemLoggerService } from 'config';
 import { ConstantsService } from 'config/constants';
 import { SubscriptionPlanService } from 'crud/subscription';
+import { parseTelegramAdminIds } from 'lib/common';
 import { getValueFromAction } from 'lib/helpers';
 import {
 	Action,
@@ -16,24 +18,114 @@ import { performance } from 'node:perf_hooks';
 import { Context, Input, Telegraf } from 'telegraf';
 import { SceneContext } from 'telegraf/scenes';
 import {
+	StudioAdminUsersService,
+	StudioAdminUserSummary,
+} from './admin-users.service';
+import {
 	appKeyboard,
 	goToHomeKeyboard,
 	guideFilesKeyboard,
 	mainKeyboard,
 } from './keyboards';
+import {
+	adminUserKeyboard,
+	directusUserUrl,
+} from './keyboards/admin-user.keyboard';
 import { appMessages, guideFilesMessages, mainMessages } from './messages';
 import { startScenarios } from './scenarios';
 
 @Update()
 export class BotUpdate {
 	PRIVATE_CHANNEL_SLUG: string;
+	private readonly adminIds: ReadonlySet<number>;
+	private readonly cmsUrl: string;
 	constructor(
 		@InjectBot() private readonly bot: Telegraf<Context>,
 		private readonly logger: SystemLoggerService,
 		private readonly cms: CmsService,
 		private readonly subscriptionPlanService: SubscriptionPlanService,
 		private readonly constants: ConstantsService,
-	) {}
+		private readonly config: ConfigService,
+		private readonly studioAdminUsers: StudioAdminUsersService,
+	) {
+		this.adminIds = new Set(
+			parseTelegramAdminIds(this.config.get<string>('TELEGRAM_ADMIN_IDS')),
+		);
+		this.cmsUrl = this.config.getOrThrow<string>('CMS_URL');
+	}
+
+	@Action(
+		/^admin_user:(block|status|unblock):([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
+	)
+	async adminUserAction(@Ctx() ctx: Context) {
+		const adminId = ctx.from?.id;
+		if (!adminId || !this.adminIds.has(adminId)) {
+			await ctx.answerCbQuery('Недостаточно прав', { show_alert: true });
+			return;
+		}
+		const data = callbackData(ctx);
+		const match = /^admin_user:(block|status|unblock):([0-9a-f-]{36})$/i.exec(
+			data,
+		);
+		if (!match) {
+			await ctx.answerCbQuery('Некорректное действие', { show_alert: true });
+			return;
+		}
+		const action = match[1] as 'block' | 'status' | 'unblock';
+		const userId = match[2];
+
+		try {
+			const result =
+				action === 'block'
+					? await this.studioAdminUsers.block(userId, adminId)
+					: action === 'unblock'
+						? await this.studioAdminUsers.unblock(userId, adminId)
+						: await this.studioAdminUsers.summary(userId);
+
+			if (action === 'status') {
+				await ctx.answerCbQuery(adminUserSummary(result), { show_alert: true });
+			} else {
+				const mutation = result as StudioAdminUserSummary & {
+					changed: boolean;
+					revokedSessions?: number;
+				};
+				const changed = mutation.changed;
+				await ctx.answerCbQuery(
+					action === 'block'
+						? changed
+							? `Аккаунт заблокирован. Отозвано сессий: ${mutation.revokedSessions ?? 0}`
+							: 'Аккаунт уже был заблокирован'
+						: changed
+							? 'Аккаунт разблокирован. Пользователю потребуется войти заново.'
+							: 'Аккаунт уже активен',
+					{ show_alert: true },
+				);
+			}
+
+			try {
+				await ctx.editMessageReplyMarkup(
+					adminUserKeyboard({
+						directusUrl: directusUserUrl(this.cmsUrl, userId),
+						status: result.status,
+						userId,
+					}),
+				);
+			} catch {
+				// Another administrator may have already refreshed this copy of the message.
+			}
+		} catch (error) {
+			this.logger.error(
+				'Не удалось выполнить действие администратора с аккаунтом',
+				error,
+			);
+			await ctx.answerCbQuery(
+				'Не удалось выполнить действие. Проверьте API и повторите.',
+				{
+					show_alert: true,
+				},
+			);
+		}
+	}
 
 	private async isPreparedStartParam(ctx: Context | SceneContext) {
 		const value = getValueFromAction(ctx, {
@@ -161,4 +253,25 @@ export class BotUpdate {
 		);
 		return;
 	}
+}
+
+function callbackData(ctx: Context): string {
+	const query = ctx.callbackQuery;
+	return query && 'data' in query && typeof query.data === 'string'
+		? query.data
+		: '';
+}
+
+function adminUserSummary(user: StudioAdminUserSummary): string {
+	const status = user.status === 'blocked' ? 'заблокирован' : user.status;
+	return [
+		`Статус: ${status}`,
+		`Баланс: ${user.balanceCredits}, резерв: ${user.reservedCredits}`,
+		`Запуски: ${user.successfulRuns}/${user.totalRuns}`,
+		...(user.emailDomain
+			? [`Аккаунтов с доменом ${user.emailDomain}: ${user.emailDomainAccounts}`]
+			: []),
+		`Аккаунтов с того же IP: ${user.sameIpAccounts}`,
+		`Активных сессий: ${user.activeSessions}`,
+	].join('\n');
 }

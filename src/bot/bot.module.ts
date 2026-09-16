@@ -13,6 +13,7 @@ import { SubscriptionModule } from 'crud/subscription';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { session } from 'telegraf';
 import { SystemLoggerModule } from '@/config';
+import { StudioAdminUsersService } from './admin-users.service';
 import { BotService } from './bot.service';
 import { BotUpdate } from './bot.update';
 
@@ -34,7 +35,7 @@ import { BotUpdate } from './bot.update';
 		SubscriptionModule,
 		forwardRef(() => PaymentModule),
 	],
-	providers: [BotService, BotUpdate, ChannelService],
+	providers: [BotService, BotUpdate, ChannelService, StudioAdminUsersService],
 	exports: [BotService],
 })
 export class BotModule {}

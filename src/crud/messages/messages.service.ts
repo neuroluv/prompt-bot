@@ -1,6 +1,12 @@
-import { BadGatewayException, GoneException, Injectable } from '@nestjs/common';
+import {
+	BadGatewayException,
+	GoneException,
+	Injectable,
+	ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SystemLoggerService } from 'config';
-import { CHATS } from 'lib/common';
+import { parseTelegramAdminIds } from 'lib/common';
 import type { IAdminMessage } from 'lib/types';
 import { InjectBot } from 'nestjs-telegraf';
 import { Context, Input, Telegraf } from 'telegraf';
@@ -10,6 +16,11 @@ import type {
 	ReplyKeyboardMarkup,
 	ReplyKeyboardRemove,
 } from 'telegraf/types';
+import {
+	adminUserKeyboard,
+	directusUserUrl,
+} from '../../bot/keyboards/admin-user.keyboard';
+import type { AdminNotificationDto } from './dto/admin-notification.dto';
 import type { GenerationNotificationDto } from './dto/generation-notification.dto';
 
 type MarkupType =
@@ -23,8 +34,55 @@ export class MessagesService {
 	constructor(
 		@InjectBot() private readonly bot: Telegraf<Context>,
 		private readonly loggerService: SystemLoggerService,
+		private readonly config: ConfigService,
 	) {
 		this.loggerService.setContext(MessagesService.name);
+	}
+
+	async sendAdminNotification(
+		notification: AdminNotificationDto,
+	): Promise<{ delivered: number; failed: number }> {
+		const admins = parseTelegramAdminIds(
+			this.config.get<string>('TELEGRAM_ADMIN_IDS'),
+		);
+		if (!admins.length) {
+			throw new ServiceUnavailableException(
+				'TELEGRAM_ADMIN_IDS is not configured',
+			);
+		}
+		const markup = notification.action
+			? adminUserKeyboard({
+					directusUrl: directusUserUrl(
+						this.config.getOrThrow<string>('CMS_URL'),
+						notification.action.userId,
+					),
+					status: 'active',
+					userId: notification.action.userId,
+				})
+			: undefined;
+		const deliveries = await Promise.allSettled(
+			admins.map((admin) =>
+				this.bot.telegram.sendMessage(admin, notification.message, {
+					parse_mode: 'HTML',
+					link_preview_options: { is_disabled: true },
+					reply_markup: markup,
+				}),
+			),
+		);
+		const failed = deliveries.filter((result) => result.status === 'rejected');
+		for (const failure of failed) {
+			this.loggerService.error(
+				'Не удалось доставить уведомление Telegram-администратору',
+				failure,
+			);
+		}
+		if (failed.length === deliveries.length) {
+			throw new BadGatewayException('Admin notification delivery failed');
+		}
+		return {
+			delivered: deliveries.length - failed.length,
+			failed: failed.length,
+		};
 	}
 	async sendMessageByChatId(
 		chatId: number,
@@ -135,7 +193,9 @@ export class MessagesService {
 
 	async sendAdminMessage(message: IAdminMessage, markup?: MarkupType) {
 		try {
-			const admins = CHATS;
+			const admins = parseTelegramAdminIds(
+				this.config.get<string>('TELEGRAM_ADMIN_IDS'),
+			);
 
 			if (!admins || !admins.length) {
 				return;

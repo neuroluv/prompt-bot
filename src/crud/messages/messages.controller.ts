@@ -8,6 +8,7 @@ import {
 	ValidationPipe,
 } from '@nestjs/common';
 import { ICustomMessage } from 'lib/types';
+import { AdminNotificationDto } from './dto/admin-notification.dto';
 import { GenerationNotificationDto } from './dto/generation-notification.dto';
 import { InternalTokenGuard } from './internal-token.guard';
 import { MessagesService } from './messages.service';
@@ -30,6 +31,18 @@ export class MessagesController {
 @UseGuards(InternalTokenGuard)
 export class NotificationsController {
 	constructor(private readonly messagesService: MessagesService) {}
+
+	@Post('admin')
+	@UsePipes(
+		new ValidationPipe({
+			forbidNonWhitelisted: true,
+			transform: true,
+			whitelist: true,
+		}),
+	)
+	sendAdminMessage(@Body() dto: AdminNotificationDto) {
+		return this.messagesService.sendAdminNotification(dto);
+	}
 
 	@Post('generation')
 	@UsePipes(

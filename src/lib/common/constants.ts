@@ -1,5 +1,3 @@
-// Global constants
-export const CHATS = [785206267, 613433290];
 export const SUPPORT_USERNAME = 'neuroluv_support';
 
 export interface RequiredChannel {
@@ -31,7 +29,9 @@ export const ENV_NAMES = {
 	DB_URL: 'DB_URL',
 	TELEGRAM_BOT_TOKEN: 'TELEGRAM_BOT_TOKEN',
 	TELEGRAM_BOT_USERNAME: 'TELEGRAM_BOT_USERNAME',
+	TELEGRAM_ADMIN_IDS: 'TELEGRAM_ADMIN_IDS',
 	PROMPT_BOT_INTERNAL_TOKEN: 'PROMPT_BOT_INTERNAL_TOKEN',
+	NEUROLUV_API_URL: 'NEUROLUV_API_URL',
 	TELEGRAM_CHANNEL_USERNAME: 'TELEGRAM_CHANNEL_USERNAME',
 	TELEGRAM_CHANNEL_LINK: 'TELEGRAM_CHANNEL_LINK',
 	TELEGRAM_CHANNEL_CHAT_LINK: 'TELEGRAM_CHANNEL_CHAT_LINK',
@@ -63,6 +63,27 @@ export const ENV_NAMES = {
 	SERVER_URL: 'SERVER_URL',
 	CLIENT_URL: 'CLIENT_URL',
 };
+
+export function parseTelegramAdminIds(value: string | undefined): number[] {
+	if (!value?.trim()) return [];
+	const ids = value
+		.split(',')
+		.map((entry) => entry.trim())
+		.filter(Boolean);
+	if (
+		ids.some(
+			(entry) =>
+				!/^\d{1,20}$/.test(entry) ||
+				!Number.isSafeInteger(Number(entry)) ||
+				Number(entry) <= 0,
+		)
+	) {
+		throw new Error(
+			'TELEGRAM_ADMIN_IDS must contain comma-separated numeric Telegram IDs',
+		);
+	}
+	return [...new Set(ids)].map(Number);
+}
 
 // Default values
 export const DEFAULT_CURRENCY = process.env[ENV_NAMES.TELEGRAM_BOT_CURRENCY];
