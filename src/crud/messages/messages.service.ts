@@ -53,7 +53,8 @@ export class MessagesService {
 		const markup = notification.action
 			? adminUserKeyboard({
 					directusUrl: directusUserUrl(
-						this.config.getOrThrow<string>('CMS_URL'),
+						this.config.get<string>('NEUROLUV_DIRECTUS_URL')?.trim() ||
+							'https://admin.neuroluv.ru',
 						notification.action.userId,
 					),
 					status: 'active',

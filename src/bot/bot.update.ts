@@ -38,7 +38,7 @@ import { startScenarios } from './scenarios';
 export class BotUpdate {
 	PRIVATE_CHANNEL_SLUG: string;
 	private readonly adminIds: ReadonlySet<number>;
-	private readonly cmsUrl: string;
+	private readonly directusUrl: string;
 	constructor(
 		@InjectBot() private readonly bot: Telegraf<Context>,
 		private readonly logger: SystemLoggerService,
@@ -51,7 +51,9 @@ export class BotUpdate {
 		this.adminIds = new Set(
 			parseTelegramAdminIds(this.config.get<string>('TELEGRAM_ADMIN_IDS')),
 		);
-		this.cmsUrl = this.config.getOrThrow<string>('CMS_URL');
+		this.directusUrl =
+			this.config.get<string>('NEUROLUV_DIRECTUS_URL')?.trim() ||
+			'https://admin.neuroluv.ru';
 	}
 
 	@Action(
@@ -105,7 +107,7 @@ export class BotUpdate {
 			try {
 				await ctx.editMessageReplyMarkup(
 					adminUserKeyboard({
-						directusUrl: directusUserUrl(this.cmsUrl, userId),
+						directusUrl: directusUserUrl(this.directusUrl, userId),
 						status: result.status,
 						userId,
 					}),

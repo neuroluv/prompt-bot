@@ -109,12 +109,19 @@ describe('MessagesService generation notifications', () => {
 				]),
 			}),
 		);
+		expect(
+			sendMessage.mock.calls[0]?.[2]?.reply_markup?.inline_keyboard[1]?.[0],
+		).toEqual({
+			text: '👤 Открыть в Directus',
+			url: 'https://admin.neuroluv.test/admin/content/ai_users/aad6cb91-05e7-436a-bf39-0de194ac9606',
+		});
 	});
 });
 
 function config(values: Record<string, string> = {}): ConfigService {
 	const environment = {
-		CMS_URL: 'https://admin.neuroluv.test',
+		CMS_URL: 'https://legacy-cms.neuroluv.test',
+		NEUROLUV_DIRECTUS_URL: 'https://admin.neuroluv.test',
 		TELEGRAM_ADMIN_IDS: '123',
 		...values,
 	};
