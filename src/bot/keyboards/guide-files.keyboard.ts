@@ -5,6 +5,11 @@ import { goToHomeKeyboard } from './go-to-home.keyboard';
 export const guideFilesKeyboard = () => {
 	const resultKeyboard = [
 		[
+			callbackPlus(`Промпты для AI-моделей`, 'download-file-ai_model_prompts', {
+				icon_custom_emoji_id: emojis.premium.forButtons.robot,
+			}),
+		],
+		[
 			callbackPlus(`35 промптов`, 'download-file-prompts35', {
 				icon_custom_emoji_id: emojis.premium.forButtons.flower,
 			}),
