@@ -218,10 +218,7 @@ describe('MessagesService generation notifications', () => {
 		});
 
 		const caption = String(sendPhoto.mock.calls[0]?.[2]?.caption);
-		const visibleCaption = caption
-			.replace(/<[^>]*>/g, '')
-			.replace(/&(?:amp|lt|gt|quot);/g, 'x');
-		expect(visibleCaption.length).toBeLessThanOrEqual(1_024);
+		expect(caption.length).toBeLessThanOrEqual(1_024);
 		expect(caption).toContain('<blockquote expandable><code>');
 		expect(caption).toContain('…</code></blockquote>');
 		expect(sendMessage).toHaveBeenCalledTimes(1);
