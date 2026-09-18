@@ -2,12 +2,12 @@ import { emojis } from 'lib/utils';
 
 export const appMessages = {
 	welcome: `
-${emojis.premium.robot} Библиотека промптов от Нейролюба — это место, где я собрал лучшие промпты в одном окне.
+${emojis.premium.robot} <b>Нейролюб Studio</b> — нейросети для текста, изображений и видео в одном Mini App.
 
 Что внутри:
-${emojis.premium.stars} готовые промпты под разные стили и задачи
-${emojis.premium.lightning} быстрое копирование / поиск по категориям
-${emojis.premium.diamond} обновления и новые подборки со временем
+${emojis.premium.stars} популярные модели и новые версии нейросетей
+${emojis.premium.lightning} генерации с изображениями, видео, аудио и документами
+${emojis.premium.diamond} история, баланс, промпты и готовые работы в одном месте
 
-Жми кнопку ниже — и залетай в галерею ${emojis.premium.handDown}`,
+Жми кнопку ниже — Studio откроется прямо внутри Telegram ${emojis.premium.handDown}`,
 };

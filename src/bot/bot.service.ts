@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MessagesService } from 'crud/messages/messages.service';
 import { Telegraf } from 'telegraf';
@@ -6,7 +6,7 @@ import { ChatInviteLink } from 'telegraf/types';
 import { SystemLoggerService } from '@/config';
 
 @Injectable()
-export class BotService {
+export class BotService implements OnApplicationBootstrap {
 	private bot: Telegraf;
 	username: string;
 	private readonly CHAT_ID: string;
@@ -29,6 +29,23 @@ export class BotService {
 
 	get telegram() {
 		return this.bot.telegram;
+	}
+
+	async onApplicationBootstrap(): Promise<void> {
+		try {
+			await Promise.all([
+				this.bot.telegram.setMyDescription(
+					'Нейролюб Studio — нейросети для текста, изображений и видео. Запускайте генерации, работайте с референсами и получайте результаты прямо в Telegram.',
+				),
+				this.bot.telegram.setMyShortDescription(
+					'Нейросети для текста, изображений и видео в Нейролюб Studio.',
+				),
+			]);
+		} catch (error) {
+			this.loggerService.warn(
+				`Не удалось обновить описание Telegram-бота: ${error instanceof Error ? error.message : 'unknown error'}`,
+			);
+		}
 	}
 
 	async createOnetimeInviteLink(): Promise<ChatInviteLink> {

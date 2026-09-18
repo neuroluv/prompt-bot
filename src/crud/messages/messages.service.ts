@@ -16,6 +16,7 @@ import type {
 	ReplyKeyboardMarkup,
 	ReplyKeyboardRemove,
 } from 'telegraf/types';
+import { adminGenerationKeyboard } from '../../bot/keyboards/admin-generation.keyboard';
 import {
 	adminUserKeyboard,
 	directusUserUrl,
@@ -33,6 +34,7 @@ type MarkupType =
 
 const TELEGRAM_CAPTION_LIMIT = 1_024;
 const TELEGRAM_MESSAGE_LIMIT = 4_096;
+type PromptPresentation = 'hidden_code' | 'plain';
 
 @Injectable()
 export class MessagesService {
@@ -120,16 +122,14 @@ export class MessagesService {
 		const header = generationHeader(notification);
 
 		try {
-			const promptTruncated = await this.sendGenerationBundle(
+			await this.sendGenerationBundle(
 				chatId,
 				header,
 				notification.media,
 				undefined,
 				notification.prompt,
+				'plain',
 			);
-			if (promptTruncated) {
-				await this.sendFullPrompt(chatId, notification.prompt);
-			}
 
 			await this.sendQuotedText(chatId, 'Результат', notification.resultText);
 			await this.sendQuotedText(chatId, 'Статус', notification.errorMessage);
@@ -190,22 +190,24 @@ export class MessagesService {
 			);
 		}
 		const header = adminGenerationHeader(notification);
+		const markup = adminGenerationKeyboard({
+			directusUrl:
+				this.config.get<string>('NEUROLUV_DIRECTUS_URL')?.trim() ||
+				'https://admin.neuroluv.ru',
+			runId: notification.runId,
+			userId: notification.userId,
+		});
 		const deliveries = await Promise.allSettled(
 			recipients.map(async (recipient) => {
-				const promptTruncated = await this.sendGenerationBundle(
+				await this.sendGenerationBundle(
 					recipient,
 					header,
 					notification.media,
 					notification.messageThreadId,
 					notification.prompt,
+					'hidden_code',
+					markup,
 				);
-				if (promptTruncated) {
-					await this.sendFullPrompt(
-						recipient,
-						notification.prompt,
-						notification.messageThreadId,
-					);
-				}
 				await this.sendQuotedText(
 					recipient,
 					'Результат',
@@ -236,27 +238,32 @@ export class MessagesService {
 		mediaItems: Array<{ type: 'photo' | 'video'; url: string }>,
 		messageThreadId?: number,
 		prompt?: string | null,
-	): Promise<boolean> {
+		promptPresentation: PromptPresentation = 'hidden_code',
+		replyMarkup?: InlineKeyboardMarkup,
+	): Promise<void> {
 		const message = messageWithPrompt(
 			header,
 			prompt,
 			mediaItems.length ? TELEGRAM_CAPTION_LIMIT : TELEGRAM_MESSAGE_LIMIT,
+			promptPresentation,
 		);
 		if (!mediaItems.length) {
-			await this.bot.telegram.sendMessage(chatId, message.text, {
+			await this.bot.telegram.sendMessage(chatId, message, {
 				parse_mode: 'HTML',
 				link_preview_options: { is_disabled: true },
+				...(replyMarkup ? { reply_markup: replyMarkup } : {}),
 				...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
 			});
-			return message.truncated;
+			return;
 		}
 
 		for (const [index, media] of mediaItems.entries()) {
 			const options = {
 				...(index === 0
 					? {
-							caption: message.text,
+							caption: message,
 							parse_mode: 'HTML' as const,
+							...(replyMarkup ? { reply_markup: replyMarkup } : {}),
 						}
 					: {}),
 				...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
@@ -274,28 +281,6 @@ export class MessagesService {
 					options,
 				);
 			}
-		}
-		return message.truncated;
-	}
-
-	private async sendFullPrompt(
-		chatId: string | number,
-		prompt: string | null | undefined,
-		messageThreadId?: number,
-	): Promise<void> {
-		const normalized = prompt?.trim();
-		if (!normalized) return;
-		const chunks = splitTelegramText(normalized, 3_600);
-		for (const [index, chunk] of chunks.entries()) {
-			await this.bot.telegram.sendMessage(
-				chatId,
-				`<b>Промпт полностью${chunks.length > 1 ? ` ${index + 1}/${chunks.length}` : ''}</b>\n<blockquote expandable><code>${escapeHtml(chunk)}</code></blockquote>`,
-				{
-					parse_mode: 'HTML',
-					link_preview_options: { is_disabled: true },
-					...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
-				},
-			);
 		}
 	}
 
@@ -373,28 +358,26 @@ function messageWithPrompt(
 	header: string,
 	prompt: string | null | undefined,
 	maxLength: number,
-): { text: string; truncated: boolean } {
+	presentation: PromptPresentation,
+): string {
 	const normalized = prompt?.trim();
-	if (!normalized) return { text: header, truncated: false };
-	const prefix = '\n\n<b>Промпт</b>\n<blockquote expandable><code>';
-	const suffix = '</code></blockquote>';
+	if (!normalized) return header;
+	const prefix =
+		presentation === 'plain'
+			? '\n\n<b>Промпт:</b>\n'
+			: '\n\n<b>Промпт</b>\n<blockquote expandable><code>';
+	const suffix = presentation === 'plain' ? '' : '</code></blockquote>';
 	const available = Math.max(
 		0,
 		maxLength - header.length - prefix.length - suffix.length,
 	);
-	if (available === 0) return { text: header, truncated: true };
+	if (available === 0) return header;
 	const content = escapeHtmlWithin(normalized, available);
-	return {
-		text: `${header}${prefix}${content.text}${suffix}`,
-		truncated: content.truncated,
-	};
+	return `${header}${prefix}${content}${suffix}`;
 }
 
-function escapeHtmlWithin(
-	value: string,
-	maxLength: number,
-): { text: string; truncated: boolean } {
-	if (maxLength <= 0) return { text: '', truncated: true };
+function escapeHtmlWithin(value: string, maxLength: number): string {
+	if (maxLength <= 0) return '';
 	let escaped = '';
 	let truncated = false;
 	const contentLimit = Math.max(0, maxLength - 1);
@@ -408,7 +391,7 @@ function escapeHtmlWithin(
 		escaped += next;
 	}
 
-	return { text: truncated ? `${escaped}…` : escaped, truncated };
+	return truncated ? `${escaped}…` : escaped;
 }
 
 function generationHeader(notification: GenerationNotificationDto): string {

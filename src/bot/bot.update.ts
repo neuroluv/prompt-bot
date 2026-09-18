@@ -150,7 +150,9 @@ export class BotUpdate {
 						is_disabled: true,
 					},
 					reply_markup: {
-						inline_keyboard: mainKeyboard(),
+						inline_keyboard: mainKeyboard(
+							`${this.constants.SITE_URL.replace(/\/$/, '')}/ai`,
+						),
 					},
 				});
 				break;
@@ -207,7 +209,9 @@ export class BotUpdate {
 				is_disabled: true,
 			},
 			reply_markup: {
-				inline_keyboard: mainKeyboard(),
+				inline_keyboard: mainKeyboard(
+					`${this.constants.SITE_URL.replace(/\/$/, '')}/ai`,
+				),
 			},
 		});
 		return;

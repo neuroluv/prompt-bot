@@ -4,7 +4,7 @@ import { Context, Telegraf } from 'telegraf';
 import { MessagesService } from './messages.service';
 
 describe('MessagesService generation notifications', () => {
-	it('attaches video and keeps the hidden copyable prompt in the same caption', async () => {
+	it('attaches video and keeps a plain prompt in the same user caption', async () => {
 		const sendVideo = jest.fn().mockResolvedValue({ message_id: 1 });
 		const sendMessage = jest.fn().mockResolvedValue({ message_id: 2 });
 		const bot = {
@@ -34,7 +34,7 @@ describe('MessagesService generation notifications', () => {
 			expect.anything(),
 			expect.objectContaining({
 				caption: expect.stringContaining(
-					'<blockquote expandable><code>Перенеси &lt;движение&gt; на фото</code></blockquote>',
+					'<b>Промпт:</b>\nПеренеси &lt;движение&gt; на фото',
 				),
 				parse_mode: 'HTML',
 			}),
@@ -184,12 +184,27 @@ describe('MessagesService generation notifications', () => {
 					'<blockquote expandable><code>Нарисуй кота</code></blockquote>',
 				),
 				message_thread_id: 777,
+				reply_markup: expect.objectContaining({
+					inline_keyboard: [
+						[
+							expect.objectContaining({
+								url: 'https://admin.neuroluv.test/admin/content/ai_runs/e345b959-e917-4b00-9e6e-713b7cc58952',
+							}),
+						],
+						[
+							expect.objectContaining({
+								callback_data:
+									'admin_user:block:b9a69061-d5db-4c79-9496-e36fd3ef3060',
+							}),
+						],
+					],
+				}),
 			}),
 		);
 		expect(sendMessage).not.toHaveBeenCalled();
 	});
 
-	it('keeps an excerpt in the caption and sends the full long prompt without data loss', async () => {
+	it('truncates a long user prompt in the caption without a second message', async () => {
 		const sendPhoto = jest.fn().mockResolvedValue({ message_id: 1 });
 		const sendMessage = jest.fn().mockResolvedValue({ message_id: 2 });
 		const bot = {
@@ -219,12 +234,10 @@ describe('MessagesService generation notifications', () => {
 
 		const caption = String(sendPhoto.mock.calls[0]?.[2]?.caption);
 		expect(caption.length).toBeLessThanOrEqual(1_024);
-		expect(caption).toContain('<blockquote expandable><code>');
-		expect(caption).toContain('…</code></blockquote>');
-		expect(sendMessage).toHaveBeenCalledTimes(1);
-		expect(sendMessage.mock.calls[0]?.[1]).toContain(
-			`<blockquote expandable><code>${longPrompt}</code></blockquote>`,
-		);
+		expect(caption).toContain('<b>Промпт:</b>');
+		expect(caption).toContain('…');
+		expect(caption).not.toContain('<blockquote');
+		expect(sendMessage).not.toHaveBeenCalled();
 	});
 });
 
