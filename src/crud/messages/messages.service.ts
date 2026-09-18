@@ -34,7 +34,6 @@ type MarkupType =
 
 const TELEGRAM_CAPTION_LIMIT = 1_024;
 const TELEGRAM_MESSAGE_LIMIT = 4_096;
-type PromptPresentation = 'hidden_code' | 'plain';
 
 @Injectable()
 export class MessagesService {
@@ -128,7 +127,6 @@ export class MessagesService {
 				notification.media,
 				undefined,
 				notification.prompt,
-				'plain',
 			);
 
 			await this.sendQuotedText(chatId, 'Результат', notification.resultText);
@@ -205,7 +203,6 @@ export class MessagesService {
 					notification.media,
 					notification.messageThreadId,
 					notification.prompt,
-					'hidden_code',
 					markup,
 				);
 				await this.sendQuotedText(
@@ -238,14 +235,12 @@ export class MessagesService {
 		mediaItems: Array<{ type: 'photo' | 'video'; url: string }>,
 		messageThreadId?: number,
 		prompt?: string | null,
-		promptPresentation: PromptPresentation = 'hidden_code',
 		replyMarkup?: InlineKeyboardMarkup,
 	): Promise<void> {
 		const message = messageWithPrompt(
 			header,
 			prompt,
 			mediaItems.length ? TELEGRAM_CAPTION_LIMIT : TELEGRAM_MESSAGE_LIMIT,
-			promptPresentation,
 		);
 		if (!mediaItems.length) {
 			await this.bot.telegram.sendMessage(chatId, message, {
@@ -358,15 +353,11 @@ function messageWithPrompt(
 	header: string,
 	prompt: string | null | undefined,
 	maxLength: number,
-	presentation: PromptPresentation,
 ): string {
 	const normalized = prompt?.trim();
 	if (!normalized) return header;
-	const prefix =
-		presentation === 'plain'
-			? '\n\n<b>Промпт:</b>\n'
-			: '\n\n<b>Промпт</b>\n<blockquote expandable><code>';
-	const suffix = presentation === 'plain' ? '' : '</code></blockquote>';
+	const prefix = '\n\n<b>Промпт</b>\n<blockquote expandable><code>';
+	const suffix = '</code></blockquote>';
 	const available = Math.max(
 		0,
 		maxLength - header.length - prefix.length - suffix.length,

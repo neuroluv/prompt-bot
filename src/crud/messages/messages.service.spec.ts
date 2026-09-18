@@ -4,7 +4,7 @@ import { Context, Telegraf } from 'telegraf';
 import { MessagesService } from './messages.service';
 
 describe('MessagesService generation notifications', () => {
-	it('attaches video and keeps a plain prompt in the same user caption', async () => {
+	it('attaches video and keeps a hidden copyable prompt in the same user caption', async () => {
 		const sendVideo = jest.fn().mockResolvedValue({ message_id: 1 });
 		const sendMessage = jest.fn().mockResolvedValue({ message_id: 2 });
 		const bot = {
@@ -34,7 +34,7 @@ describe('MessagesService generation notifications', () => {
 			expect.anything(),
 			expect.objectContaining({
 				caption: expect.stringContaining(
-					'<b>Промпт:</b>\nПеренеси &lt;движение&gt; на фото',
+					'<blockquote expandable><code>Перенеси &lt;движение&gt; на фото</code></blockquote>',
 				),
 				parse_mode: 'HTML',
 			}),
@@ -234,9 +234,8 @@ describe('MessagesService generation notifications', () => {
 
 		const caption = String(sendPhoto.mock.calls[0]?.[2]?.caption);
 		expect(caption.length).toBeLessThanOrEqual(1_024);
-		expect(caption).toContain('<b>Промпт:</b>');
-		expect(caption).toContain('…');
-		expect(caption).not.toContain('<blockquote');
+		expect(caption).toContain('<blockquote expandable><code>');
+		expect(caption).toContain('…</code></blockquote>');
 		expect(sendMessage).not.toHaveBeenCalled();
 	});
 });
