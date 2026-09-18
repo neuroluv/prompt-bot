@@ -20,6 +20,8 @@ import {
 	adminUserKeyboard,
 	directusUserUrl,
 } from '../../bot/keyboards/admin-user.keyboard';
+import type { AccountNotificationDto } from './dto/account-notification.dto';
+import type { AdminGenerationNotificationDto } from './dto/admin-generation-notification.dto';
 import type { AdminNotificationDto } from './dto/admin-notification.dto';
 import type { GenerationNotificationDto } from './dto/generation-notification.dto';
 
@@ -42,12 +44,12 @@ export class MessagesService {
 	async sendAdminNotification(
 		notification: AdminNotificationDto,
 	): Promise<{ delivered: number; failed: number }> {
-		const admins = parseTelegramAdminIds(
-			this.config.get<string>('TELEGRAM_ADMIN_IDS'),
-		);
-		if (!admins.length) {
+		const recipients = notification.chatId
+			? [notification.chatId]
+			: parseTelegramAdminIds(this.config.get<string>('TELEGRAM_ADMIN_IDS'));
+		if (!recipients.length) {
 			throw new ServiceUnavailableException(
-				'TELEGRAM_ADMIN_IDS is not configured',
+				'Admin Telegram destination is not configured',
 			);
 		}
 		const markup = notification.action
@@ -62,11 +64,14 @@ export class MessagesService {
 				})
 			: undefined;
 		const deliveries = await Promise.allSettled(
-			admins.map((admin) =>
-				this.bot.telegram.sendMessage(admin, notification.message, {
+			recipients.map((recipient) =>
+				this.bot.telegram.sendMessage(recipient, notification.message, {
 					parse_mode: 'HTML',
 					link_preview_options: { is_disabled: true },
 					reply_markup: markup,
+					...(notification.messageThreadId
+						? { message_thread_id: notification.messageThreadId }
+						: {}),
 				}),
 			),
 		);
@@ -112,32 +117,7 @@ export class MessagesService {
 		const header = generationHeader(notification);
 
 		try {
-			if (notification.media.length) {
-				for (const [index, media] of notification.media.entries()) {
-					const options =
-						index === 0
-							? { caption: header, parse_mode: 'HTML' as const }
-							: undefined;
-					if (media.type === 'video') {
-						await this.bot.telegram.sendVideo(
-							chatId,
-							Input.fromURL(media.url),
-							options,
-						);
-					} else {
-						await this.bot.telegram.sendPhoto(
-							chatId,
-							Input.fromURL(media.url),
-							options,
-						);
-					}
-				}
-			} else {
-				await this.bot.telegram.sendMessage(chatId, header, {
-					parse_mode: 'HTML',
-					link_preview_options: { is_disabled: true },
-				});
-			}
+			await this.sendGenerationBundle(chatId, header, notification.media);
 
 			await this.sendQuotedText(chatId, 'Промпт', notification.prompt);
 			await this.sendQuotedText(chatId, 'Результат', notification.resultText);
@@ -155,10 +135,131 @@ export class MessagesService {
 		}
 	}
 
+	async sendAccountNotification(
+		notification: AccountNotificationDto,
+	): Promise<{ delivered: true }> {
+		const title =
+			notification.kind === 'promo'
+				? '🎁 Промокод зачислен'
+				: '💰 Баланс пополнен';
+		const message = [
+			`<b>${title}</b>`,
+			`<b>Основание:</b> ${escapeHtml(notification.label)}`,
+			`<b>Начислено:</b> ${formatCredits(notification.amount)}`,
+			`<b>Баланс:</b> ${formatCredits(notification.balanceAfter)}`,
+			`<a href="${escapeHtml(notification.walletUrl)}">Открыть баланс</a>`,
+		].join('\n');
+		try {
+			await this.bot.telegram.sendMessage(notification.chatId, message, {
+				parse_mode: 'HTML',
+				link_preview_options: { is_disabled: true },
+			});
+			return { delivered: true };
+		} catch (error) {
+			this.loggerService.error(
+				`Не удалось отправить уведомление о балансе пользователю ${notification.chatId}`,
+				error,
+			);
+			if (isUnreachableTelegramChat(error)) {
+				throw new GoneException('Telegram chat is unavailable');
+			}
+			throw new BadGatewayException('Telegram delivery failed');
+		}
+	}
+
+	async sendAdminGenerationNotification(
+		notification: AdminGenerationNotificationDto,
+	): Promise<{ delivered: number; failed: number }> {
+		const recipients = notification.chatId
+			? [notification.chatId]
+			: parseTelegramAdminIds(this.config.get<string>('TELEGRAM_ADMIN_IDS'));
+		if (!recipients.length) {
+			throw new ServiceUnavailableException(
+				'Admin Telegram destination is not configured',
+			);
+		}
+		const header = adminGenerationHeader(notification);
+		const deliveries = await Promise.allSettled(
+			recipients.map(async (recipient) => {
+				await this.sendGenerationBundle(
+					recipient,
+					header,
+					notification.media,
+					notification.messageThreadId,
+				);
+				await this.sendQuotedText(
+					recipient,
+					'Промпт',
+					notification.prompt,
+					notification.messageThreadId,
+				);
+				await this.sendQuotedText(
+					recipient,
+					'Результат',
+					notification.resultText,
+					notification.messageThreadId,
+				);
+			}),
+		);
+		const failed = deliveries.filter((result) => result.status === 'rejected');
+		for (const failure of failed) {
+			this.loggerService.error(
+				'Не удалось доставить администратору успешную генерацию',
+				failure,
+			);
+		}
+		if (failed.length === deliveries.length) {
+			throw new BadGatewayException('Admin generation delivery failed');
+		}
+		return {
+			delivered: deliveries.length - failed.length,
+			failed: failed.length,
+		};
+	}
+
+	private async sendGenerationBundle(
+		chatId: string | number,
+		header: string,
+		mediaItems: Array<{ type: 'photo' | 'video'; url: string }>,
+		messageThreadId?: number,
+	): Promise<void> {
+		if (!mediaItems.length) {
+			await this.bot.telegram.sendMessage(chatId, header, {
+				parse_mode: 'HTML',
+				link_preview_options: { is_disabled: true },
+				...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
+			});
+			return;
+		}
+
+		for (const [index, media] of mediaItems.entries()) {
+			const options = {
+				...(index === 0
+					? { caption: header, parse_mode: 'HTML' as const }
+					: {}),
+				...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
+			};
+			if (media.type === 'video') {
+				await this.bot.telegram.sendVideo(
+					chatId,
+					Input.fromURL(media.url),
+					options,
+				);
+			} else {
+				await this.bot.telegram.sendPhoto(
+					chatId,
+					Input.fromURL(media.url),
+					options,
+				);
+			}
+		}
+	}
+
 	private async sendQuotedText(
-		chatId: number,
+		chatId: string | number,
 		label: string,
 		value: string | null | undefined,
+		messageThreadId?: number,
 	): Promise<void> {
 		const normalized = value?.trim();
 		if (!normalized) return;
@@ -167,7 +268,11 @@ export class MessagesService {
 			await this.bot.telegram.sendMessage(
 				chatId,
 				`<b>${escapeHtml(label)}${chunks.length > 1 ? ` ${index + 1}/${chunks.length}` : ''}</b>\n<blockquote>${escapeHtml(chunk)}</blockquote>`,
-				{ parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
+				{
+					parse_mode: 'HTML',
+					link_preview_options: { is_disabled: true },
+					...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
+				},
 			);
 		}
 	}
@@ -231,7 +336,52 @@ function generationHeader(notification: GenerationNotificationDto): string {
 		`<b>${title}</b>`,
 		`<a href="${escapeHtml(notification.generationUrl)}">Открыть генерацию</a>`,
 		`<b>Модель:</b> ${escapeHtml(notification.modelName)}`,
+		`<b>Списано:</b> ${formatCredits(notification.creditsSpent)}`,
+		`<b>Баланс:</b> ${formatCredits(notification.balanceAfter)}`,
 	].join('\n');
+}
+
+function adminGenerationHeader(
+	notification: AdminGenerationNotificationDto,
+): string {
+	const lines = [
+		'✅ <b>Успешная генерация</b>',
+		`<a href="${escapeHtml(notification.generationUrl)}">Открыть генерацию</a>`,
+		'',
+		`<b>Пользователь:</b> ${escapeHtml(notification.displayName)}`,
+	];
+	if (notification.email) {
+		lines.push(`<b>Email:</b> ${escapeHtml(notification.email)}`);
+	}
+	lines.push(
+		`<b>Модель:</b> ${escapeHtml(notification.modelName)}`,
+		`<b>Провайдер:</b> ${escapeHtml(notification.providerType)}`,
+		`<b>Списано:</b> ${formatCredits(notification.creditsSpent)}`,
+		`<b>Баланс:</b> ${formatCredits(notification.balanceAfter)}`,
+		`<b>Run ID:</b> <code>${escapeHtml(notification.runId)}</code>`,
+		`<b>User ID:</b> <code>${escapeHtml(notification.userId)}</code>`,
+	);
+	return lines.join('\n');
+}
+
+function formatCredits(value: string): string {
+	try {
+		const credits = BigInt(value);
+		const absolute = credits < 0n ? -credits : credits;
+		const lastTwo = Number(absolute % 100n);
+		const last = Number(absolute % 10n);
+		const unit =
+			lastTwo >= 11 && lastTwo <= 14
+				? 'кредитов'
+				: last === 1
+					? 'кредит'
+					: last >= 2 && last <= 4
+						? 'кредита'
+						: 'кредитов';
+		return `${credits.toLocaleString('ru-RU')} ${unit}`;
+	} catch {
+		return `${escapeHtml(value)} кредитов`;
+	}
 }
 
 function splitTelegramText(value: string, maxLength: number): string[] {

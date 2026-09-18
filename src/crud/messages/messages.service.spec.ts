@@ -24,6 +24,8 @@ describe('MessagesService generation notifications', () => {
 			prompt: 'Перенеси <движение> на фото',
 			resultText: 'Готовый текст & описание',
 			errorMessage: null,
+			creditsSpent: '12',
+			balanceAfter: '88',
 			media: [{ type: 'video', url: 'https://cdn.example.test/generated.mp4' }],
 		});
 
@@ -63,6 +65,8 @@ describe('MessagesService generation notifications', () => {
 			prompt: null,
 			resultText: '&'.repeat(4_000),
 			errorMessage: null,
+			creditsSpent: '2',
+			balanceAfter: '98',
 			media: [],
 		});
 
@@ -115,6 +119,77 @@ describe('MessagesService generation notifications', () => {
 			text: '👤 Открыть в Directus',
 			url: 'https://admin.neuroluv.test/admin/content/ai_users/aad6cb91-05e7-436a-bf39-0de194ac9606',
 		});
+	});
+
+	it('routes an admin notification to a configured Telegram topic', async () => {
+		const sendMessage = jest.fn().mockResolvedValue({ message_id: 1 });
+		const bot = {
+			telegram: { sendMessage, sendPhoto: jest.fn(), sendVideo: jest.fn() },
+		} as unknown as Telegraf<Context>;
+		const logger = {
+			setContext: jest.fn(),
+			error: jest.fn(),
+		} as unknown as SystemLoggerService;
+		const service = new MessagesService(bot, logger, config());
+
+		await service.sendAdminNotification({
+			chatId: '-1001234567890',
+			messageThreadId: 321,
+			message: '<b>Баланс пополнен</b>',
+		});
+
+		expect(sendMessage).toHaveBeenCalledTimes(1);
+		expect(sendMessage).toHaveBeenCalledWith(
+			'-1001234567890',
+			'<b>Баланс пополнен</b>',
+			expect.objectContaining({ message_thread_id: 321 }),
+		);
+	});
+
+	it('attaches generated media to the admin generation topic', async () => {
+		const sendPhoto = jest.fn().mockResolvedValue({ message_id: 1 });
+		const sendMessage = jest.fn().mockResolvedValue({ message_id: 2 });
+		const bot = {
+			telegram: { sendMessage, sendPhoto, sendVideo: jest.fn() },
+		} as unknown as Telegraf<Context>;
+		const logger = {
+			setContext: jest.fn(),
+			error: jest.fn(),
+		} as unknown as SystemLoggerService;
+		const service = new MessagesService(bot, logger, config());
+
+		await service.sendAdminGenerationNotification({
+			chatId: '-1001234567890',
+			messageThreadId: 777,
+			runId: 'e345b959-e917-4b00-9e6e-713b7cc58952',
+			userId: 'b9a69061-d5db-4c79-9496-e36fd3ef3060',
+			displayName: 'Пользователь',
+			email: 'user@example.test',
+			modelName: 'Nano Banana',
+			providerType: 'kie',
+			generationUrl: 'https://neuroluv.ru/ai/works/example',
+			prompt: 'Нарисуй кота',
+			resultText: null,
+			creditsSpent: '8',
+			balanceAfter: '92',
+			media: [
+				{ type: 'photo', url: 'https://cdn.example.test/generated.webp' },
+			],
+		});
+
+		expect(sendPhoto).toHaveBeenCalledWith(
+			'-1001234567890',
+			expect.anything(),
+			expect.objectContaining({
+				caption: expect.stringContaining('Успешная генерация'),
+				message_thread_id: 777,
+			}),
+		);
+		expect(sendMessage).toHaveBeenCalledWith(
+			'-1001234567890',
+			expect.stringContaining('<blockquote>Нарисуй кота</blockquote>'),
+			expect.objectContaining({ message_thread_id: 777 }),
+		);
 	});
 });
 

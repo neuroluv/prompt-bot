@@ -8,6 +8,8 @@ import {
 	ValidationPipe,
 } from '@nestjs/common';
 import { ICustomMessage } from 'lib/types';
+import { AccountNotificationDto } from './dto/account-notification.dto';
+import { AdminGenerationNotificationDto } from './dto/admin-generation-notification.dto';
 import { AdminNotificationDto } from './dto/admin-notification.dto';
 import { GenerationNotificationDto } from './dto/generation-notification.dto';
 import { InternalTokenGuard } from './internal-token.guard';
@@ -54,5 +56,29 @@ export class NotificationsController {
 	)
 	sendGeneration(@Body() dto: GenerationNotificationDto) {
 		return this.messagesService.sendGenerationNotification(dto);
+	}
+
+	@Post('account')
+	@UsePipes(
+		new ValidationPipe({
+			forbidNonWhitelisted: true,
+			transform: true,
+			whitelist: true,
+		}),
+	)
+	sendAccount(@Body() dto: AccountNotificationDto) {
+		return this.messagesService.sendAccountNotification(dto);
+	}
+
+	@Post('admin-generation')
+	@UsePipes(
+		new ValidationPipe({
+			forbidNonWhitelisted: true,
+			transform: true,
+			whitelist: true,
+		}),
+	)
+	sendAdminGeneration(@Body() dto: AdminGenerationNotificationDto) {
+		return this.messagesService.sendAdminGenerationNotification(dto);
 	}
 }
