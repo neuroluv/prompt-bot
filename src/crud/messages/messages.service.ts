@@ -120,13 +120,16 @@ export class MessagesService {
 		const header = generationHeader(notification);
 
 		try {
-			await this.sendGenerationBundle(
+			const promptTruncated = await this.sendGenerationBundle(
 				chatId,
 				header,
 				notification.media,
 				undefined,
 				notification.prompt,
 			);
+			if (promptTruncated) {
+				await this.sendFullPrompt(chatId, notification.prompt);
+			}
 
 			await this.sendQuotedText(chatId, 'Результат', notification.resultText);
 			await this.sendQuotedText(chatId, 'Статус', notification.errorMessage);
@@ -189,13 +192,20 @@ export class MessagesService {
 		const header = adminGenerationHeader(notification);
 		const deliveries = await Promise.allSettled(
 			recipients.map(async (recipient) => {
-				await this.sendGenerationBundle(
+				const promptTruncated = await this.sendGenerationBundle(
 					recipient,
 					header,
 					notification.media,
 					notification.messageThreadId,
 					notification.prompt,
 				);
+				if (promptTruncated) {
+					await this.sendFullPrompt(
+						recipient,
+						notification.prompt,
+						notification.messageThreadId,
+					);
+				}
 				await this.sendQuotedText(
 					recipient,
 					'Результат',
@@ -226,29 +236,26 @@ export class MessagesService {
 		mediaItems: Array<{ type: 'photo' | 'video'; url: string }>,
 		messageThreadId?: number,
 		prompt?: string | null,
-	): Promise<void> {
+	): Promise<boolean> {
+		const message = messageWithPrompt(
+			header,
+			prompt,
+			mediaItems.length ? TELEGRAM_CAPTION_LIMIT : TELEGRAM_MESSAGE_LIMIT,
+		);
 		if (!mediaItems.length) {
-			await this.bot.telegram.sendMessage(
-				chatId,
-				messageWithPrompt(header, prompt, TELEGRAM_MESSAGE_LIMIT),
-				{
-					parse_mode: 'HTML',
-					link_preview_options: { is_disabled: true },
-					...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
-				},
-			);
-			return;
+			await this.bot.telegram.sendMessage(chatId, message.text, {
+				parse_mode: 'HTML',
+				link_preview_options: { is_disabled: true },
+				...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
+			});
+			return message.truncated;
 		}
 
 		for (const [index, media] of mediaItems.entries()) {
 			const options = {
 				...(index === 0
 					? {
-							caption: messageWithPrompt(
-								header,
-								prompt,
-								TELEGRAM_CAPTION_LIMIT,
-							),
+							caption: message.text,
 							parse_mode: 'HTML' as const,
 						}
 					: {}),
@@ -267,6 +274,28 @@ export class MessagesService {
 					options,
 				);
 			}
+		}
+		return message.truncated;
+	}
+
+	private async sendFullPrompt(
+		chatId: string | number,
+		prompt: string | null | undefined,
+		messageThreadId?: number,
+	): Promise<void> {
+		const normalized = prompt?.trim();
+		if (!normalized) return;
+		const chunks = splitTelegramText(normalized, 3_600);
+		for (const [index, chunk] of chunks.entries()) {
+			await this.bot.telegram.sendMessage(
+				chatId,
+				`<b>Промпт полностью${chunks.length > 1 ? ` ${index + 1}/${chunks.length}` : ''}</b>\n<blockquote expandable><code>${escapeHtml(chunk)}</code></blockquote>`,
+				{
+					parse_mode: 'HTML',
+					link_preview_options: { is_disabled: true },
+					...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
+				},
+			);
 		}
 	}
 
@@ -344,9 +373,9 @@ function messageWithPrompt(
 	header: string,
 	prompt: string | null | undefined,
 	maxLength: number,
-): string {
+): { text: string; truncated: boolean } {
 	const normalized = prompt?.trim();
-	if (!normalized) return header;
+	if (!normalized) return { text: header, truncated: false };
 	const prefix = '\n\n<b>Промпт</b>\n<blockquote expandable><code>';
 	const suffix = '</code></blockquote>';
 	const visiblePrefix = '\n\nПромпт\n';
@@ -354,12 +383,19 @@ function messageWithPrompt(
 		0,
 		maxLength - telegramHtmlTextLength(header) - visiblePrefix.length,
 	);
-	if (available === 0) return header;
-	return `${header}${prefix}${escapeHtmlWithin(normalized, available)}${suffix}`;
+	if (available === 0) return { text: header, truncated: true };
+	const content = escapeHtmlWithin(normalized, available);
+	return {
+		text: `${header}${prefix}${content.text}${suffix}`,
+		truncated: content.truncated,
+	};
 }
 
-function escapeHtmlWithin(value: string, maxLength: number): string {
-	if (maxLength <= 0) return '';
+function escapeHtmlWithin(
+	value: string,
+	maxLength: number,
+): { text: string; truncated: boolean } {
+	if (maxLength <= 0) return { text: '', truncated: true };
 	let escaped = '';
 	let visibleLength = 0;
 	let truncated = false;
@@ -374,7 +410,7 @@ function escapeHtmlWithin(value: string, maxLength: number): string {
 		visibleLength += character.length;
 	}
 
-	return truncated ? `${escaped}…` : escaped;
+	return { text: truncated ? `${escaped}…` : escaped, truncated };
 }
 
 function telegramHtmlTextLength(value: string): number {

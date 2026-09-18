@@ -189,7 +189,7 @@ describe('MessagesService generation notifications', () => {
 		expect(sendMessage).not.toHaveBeenCalled();
 	});
 
-	it('truncates a long prompt inside the Telegram caption limit without a second prompt message', async () => {
+	it('keeps an excerpt in the caption and sends the full long prompt without data loss', async () => {
 		const sendPhoto = jest.fn().mockResolvedValue({ message_id: 1 });
 		const sendMessage = jest.fn().mockResolvedValue({ message_id: 2 });
 		const bot = {
@@ -201,12 +201,13 @@ describe('MessagesService generation notifications', () => {
 		} as unknown as SystemLoggerService;
 		const service = new MessagesService(bot, logger, config());
 
+		const longPrompt = 'длинный копируемый промпт '.repeat(80).trim();
 		await service.sendGenerationNotification({
 			chatId: '123456',
 			status: 'succeeded',
 			modelName: 'Image model',
 			generationUrl: 'https://neuroluv.ru/ai/works/example',
-			prompt: '<hero>&'.repeat(2_000),
+			prompt: longPrompt,
 			resultText: null,
 			errorMessage: null,
 			creditsSpent: '3',
@@ -223,7 +224,10 @@ describe('MessagesService generation notifications', () => {
 		expect(visibleCaption.length).toBeLessThanOrEqual(1_024);
 		expect(caption).toContain('<blockquote expandable><code>');
 		expect(caption).toContain('…</code></blockquote>');
-		expect(sendMessage).not.toHaveBeenCalled();
+		expect(sendMessage).toHaveBeenCalledTimes(1);
+		expect(sendMessage.mock.calls[0]?.[1]).toContain(
+			`<blockquote expandable><code>${longPrompt}</code></blockquote>`,
+		);
 	});
 });
 
