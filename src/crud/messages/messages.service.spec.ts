@@ -4,7 +4,7 @@ import { Context, Telegraf } from 'telegraf';
 import { MessagesService } from './messages.service';
 
 describe('MessagesService generation notifications', () => {
-	it('attaches video and sends prompt/result as Telegram quotes', async () => {
+	it('attaches video and keeps the hidden copyable prompt in the same caption', async () => {
 		const sendVideo = jest.fn().mockResolvedValue({ message_id: 1 });
 		const sendMessage = jest.fn().mockResolvedValue({ message_id: 2 });
 		const bot = {
@@ -33,15 +33,14 @@ describe('MessagesService generation notifications', () => {
 			123456,
 			expect.anything(),
 			expect.objectContaining({
-				caption: expect.stringContaining('Генерация готова'),
+				caption: expect.stringContaining(
+					'<blockquote expandable><code>Перенеси &lt;движение&gt; на фото</code></blockquote>',
+				),
 				parse_mode: 'HTML',
 			}),
 		);
-		expect(sendMessage).toHaveBeenCalledTimes(2);
+		expect(sendMessage).toHaveBeenCalledTimes(1);
 		expect(sendMessage.mock.calls[0]?.[1]).toContain(
-			'<blockquote>Перенеси &lt;движение&gt; на фото</blockquote>',
-		);
-		expect(sendMessage.mock.calls[1]?.[1]).toContain(
 			'<blockquote>Готовый текст &amp; описание</blockquote>',
 		);
 	});
@@ -181,15 +180,47 @@ describe('MessagesService generation notifications', () => {
 			'-1001234567890',
 			expect.anything(),
 			expect.objectContaining({
-				caption: expect.stringContaining('Успешная генерация'),
+				caption: expect.stringContaining(
+					'<blockquote expandable><code>Нарисуй кота</code></blockquote>',
+				),
 				message_thread_id: 777,
 			}),
 		);
-		expect(sendMessage).toHaveBeenCalledWith(
-			'-1001234567890',
-			expect.stringContaining('<blockquote>Нарисуй кота</blockquote>'),
-			expect.objectContaining({ message_thread_id: 777 }),
-		);
+		expect(sendMessage).not.toHaveBeenCalled();
+	});
+
+	it('truncates a long prompt inside the Telegram caption limit without a second prompt message', async () => {
+		const sendPhoto = jest.fn().mockResolvedValue({ message_id: 1 });
+		const sendMessage = jest.fn().mockResolvedValue({ message_id: 2 });
+		const bot = {
+			telegram: { sendMessage, sendPhoto, sendVideo: jest.fn() },
+		} as unknown as Telegraf<Context>;
+		const logger = {
+			setContext: jest.fn(),
+			error: jest.fn(),
+		} as unknown as SystemLoggerService;
+		const service = new MessagesService(bot, logger, config());
+
+		await service.sendGenerationNotification({
+			chatId: '123456',
+			status: 'succeeded',
+			modelName: 'Image model',
+			generationUrl: 'https://neuroluv.ru/ai/works/example',
+			prompt: '<hero>&'.repeat(2_000),
+			resultText: null,
+			errorMessage: null,
+			creditsSpent: '3',
+			balanceAfter: '97',
+			media: [
+				{ type: 'photo', url: 'https://cdn.example.test/generated.webp' },
+			],
+		});
+
+		const caption = String(sendPhoto.mock.calls[0]?.[2]?.caption);
+		expect(caption.length).toBeLessThanOrEqual(1_024);
+		expect(caption).toContain('<blockquote expandable><code>');
+		expect(caption).toContain('…</code></blockquote>');
+		expect(sendMessage).not.toHaveBeenCalled();
 	});
 });
 

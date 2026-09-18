@@ -31,6 +31,9 @@ type MarkupType =
 	| ReplyKeyboardRemove
 	| ForceReply;
 
+const TELEGRAM_CAPTION_LIMIT = 1_024;
+const TELEGRAM_MESSAGE_LIMIT = 4_096;
+
 @Injectable()
 export class MessagesService {
 	constructor(
@@ -117,9 +120,14 @@ export class MessagesService {
 		const header = generationHeader(notification);
 
 		try {
-			await this.sendGenerationBundle(chatId, header, notification.media);
+			await this.sendGenerationBundle(
+				chatId,
+				header,
+				notification.media,
+				undefined,
+				notification.prompt,
+			);
 
-			await this.sendQuotedText(chatId, 'Промпт', notification.prompt);
 			await this.sendQuotedText(chatId, 'Результат', notification.resultText);
 			await this.sendQuotedText(chatId, 'Статус', notification.errorMessage);
 			return { delivered: true };
@@ -186,12 +194,7 @@ export class MessagesService {
 					header,
 					notification.media,
 					notification.messageThreadId,
-				);
-				await this.sendQuotedText(
-					recipient,
-					'Промпт',
 					notification.prompt,
-					notification.messageThreadId,
 				);
 				await this.sendQuotedText(
 					recipient,
@@ -222,20 +225,32 @@ export class MessagesService {
 		header: string,
 		mediaItems: Array<{ type: 'photo' | 'video'; url: string }>,
 		messageThreadId?: number,
+		prompt?: string | null,
 	): Promise<void> {
 		if (!mediaItems.length) {
-			await this.bot.telegram.sendMessage(chatId, header, {
-				parse_mode: 'HTML',
-				link_preview_options: { is_disabled: true },
-				...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
-			});
+			await this.bot.telegram.sendMessage(
+				chatId,
+				messageWithPrompt(header, prompt, TELEGRAM_MESSAGE_LIMIT),
+				{
+					parse_mode: 'HTML',
+					link_preview_options: { is_disabled: true },
+					...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
+				},
+			);
 			return;
 		}
 
 		for (const [index, media] of mediaItems.entries()) {
 			const options = {
 				...(index === 0
-					? { caption: header, parse_mode: 'HTML' as const }
+					? {
+							caption: messageWithPrompt(
+								header,
+								prompt,
+								TELEGRAM_CAPTION_LIMIT,
+							),
+							parse_mode: 'HTML' as const,
+						}
 					: {}),
 				...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
 			};
@@ -323,6 +338,41 @@ export class MessagesService {
 			});
 		}
 	}
+}
+
+function messageWithPrompt(
+	header: string,
+	prompt: string | null | undefined,
+	maxLength: number,
+): string {
+	const normalized = prompt?.trim();
+	if (!normalized) return header;
+	const prefix = '\n\n<b>Промпт</b>\n<blockquote expandable><code>';
+	const suffix = '</code></blockquote>';
+	const available = Math.max(
+		0,
+		maxLength - header.length - prefix.length - suffix.length,
+	);
+	if (available === 0) return header.slice(0, maxLength);
+	return `${header}${prefix}${escapeHtmlWithin(normalized, available)}${suffix}`;
+}
+
+function escapeHtmlWithin(value: string, maxLength: number): string {
+	if (maxLength <= 0) return '';
+	let escaped = '';
+	let truncated = false;
+	const contentLimit = Math.max(0, maxLength - 1);
+
+	for (const character of value) {
+		const next = escapeHtml(character);
+		if (escaped.length + next.length > contentLimit) {
+			truncated = true;
+			break;
+		}
+		escaped += next;
+	}
+
+	return truncated ? `${escaped}…` : escaped;
 }
 
 function generationHeader(notification: GenerationNotificationDto): string {
