@@ -349,30 +349,37 @@ function messageWithPrompt(
 	if (!normalized) return header;
 	const prefix = '\n\n<b>Промпт</b>\n<blockquote expandable><code>';
 	const suffix = '</code></blockquote>';
+	const visiblePrefix = '\n\nПромпт\n';
 	const available = Math.max(
 		0,
-		maxLength - header.length - prefix.length - suffix.length,
+		maxLength - telegramHtmlTextLength(header) - visiblePrefix.length,
 	);
-	if (available === 0) return header.slice(0, maxLength);
+	if (available === 0) return header;
 	return `${header}${prefix}${escapeHtmlWithin(normalized, available)}${suffix}`;
 }
 
 function escapeHtmlWithin(value: string, maxLength: number): string {
 	if (maxLength <= 0) return '';
 	let escaped = '';
+	let visibleLength = 0;
 	let truncated = false;
 	const contentLimit = Math.max(0, maxLength - 1);
 
 	for (const character of value) {
-		const next = escapeHtml(character);
-		if (escaped.length + next.length > contentLimit) {
+		if (visibleLength + character.length > contentLimit) {
 			truncated = true;
 			break;
 		}
-		escaped += next;
+		escaped += escapeHtml(character);
+		visibleLength += character.length;
 	}
 
 	return truncated ? `${escaped}…` : escaped;
+}
+
+function telegramHtmlTextLength(value: string): number {
+	return value.replace(/<[^>]*>/g, '').replace(/&(?:amp|lt|gt|quot);/g, 'x')
+		.length;
 }
 
 function generationHeader(notification: GenerationNotificationDto): string {
