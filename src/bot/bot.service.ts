@@ -1,17 +1,18 @@
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MessagesService } from 'crud/messages/messages.service';
+import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
 import { ChatInviteLink } from 'telegraf/types';
 import { SystemLoggerService } from '@/config';
 
 @Injectable()
 export class BotService implements OnApplicationBootstrap {
-	private bot: Telegraf;
 	username: string;
 	private readonly CHAT_ID: string;
 
 	constructor(
+		@InjectBot() private readonly bot: Telegraf,
 		private readonly config: ConfigService,
 		private readonly loggerService: SystemLoggerService,
 		private readonly messagesService: MessagesService,
@@ -21,9 +22,6 @@ export class BotService implements OnApplicationBootstrap {
 		);
 		this.loggerService.setContext(BotService.name);
 
-		this.bot = new Telegraf(
-			this.config.getOrThrow<string>('TELEGRAM_BOT_TOKEN')!,
-		);
 		this.username = this.config.getOrThrow('TELEGRAM_BOT_USERNAME');
 	}
 

@@ -90,6 +90,8 @@ Polling failures (including a temporary Telegram 409 during handover) are handle
 and retried every 15 seconds without killing HTTP notifications. `/api/health`
 includes `polling.state` (`starting`, `running`, `retrying`, `stopped`); persistent
 `retrying`/409 indicates another instance is still using the token.
+`TelegramClientModule` is the only module allowed to register `TelegrafModule.forRootAsync`;
+bot handlers, notification delivery and health all use that one shared client.
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
 

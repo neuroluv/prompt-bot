@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { BotModule } from 'bot';
+import { TelegramClientModule } from '../../bot/telegram-client.module';
 import { HealthController } from './health.controller';
 
 @Module({
-	imports: [BotModule],
+	imports: [TelegramClientModule],
 	controllers: [HealthController],
 })
 export class HealthModule {}
