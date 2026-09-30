@@ -14,6 +14,7 @@ import { TelegrafModule } from 'nestjs-telegraf';
 import { session } from 'telegraf';
 import { SystemLoggerModule } from '@/config';
 import { StudioAdminUsersService } from './admin-users.service';
+import { BotPollingService } from './bot-polling.service';
 import { BotService } from './bot.service';
 import { BotUpdate } from './bot.update';
 
@@ -25,6 +26,7 @@ import { BotUpdate } from './bot.update';
 			inject: [ConfigService],
 			useFactory: async (configService: ConfigService) => ({
 				token: configService.get(ENV_NAMES.TELEGRAM_BOT_TOKEN),
+				launchOptions: false,
 				middlewares: [session()],
 			}),
 		}),
@@ -35,7 +37,13 @@ import { BotUpdate } from './bot.update';
 		SubscriptionModule,
 		forwardRef(() => PaymentModule),
 	],
-	providers: [BotService, BotUpdate, ChannelService, StudioAdminUsersService],
-	exports: [BotService],
+	providers: [
+		BotService,
+		BotUpdate,
+		ChannelService,
+		StudioAdminUsersService,
+		BotPollingService,
+	],
+	exports: [BotService, BotPollingService],
 })
 export class BotModule {}

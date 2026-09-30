@@ -82,6 +82,15 @@ $ npm run test:cov
 
 ## Deployment
 
+Run exactly **one replica per Telegram token**; do not launch the same token in
+another service or local development process. For Docker Swarm/Dokploy, use the
+`stop-first` update order so the previous poller releases Telegram before the new
+task starts. SIGTERM/SIGINT trigger Nest shutdown hooks and stop polling gracefully.
+Polling failures (including a temporary Telegram 409 during handover) are handled
+and retried every 15 seconds without killing HTTP notifications. `/api/health`
+includes `polling.state` (`starting`, `running`, `retrying`, `stopped`); persistent
+`retrying`/409 indicates another instance is still using the token.
+
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
 
 If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
