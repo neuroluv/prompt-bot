@@ -24,7 +24,7 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+[NestJS 12](https://github.com/nestjs/nest) Telegram bot for Neuroluv Studio.
 
 ## Neuroluv administrator controls
 
@@ -44,6 +44,11 @@ PROMPT_BOT_INTERNAL_TOKEN=replace-with-the-shared-secret
 ```
 
 ## Project setup
+
+Requires Node.js 24.15+ and npm 11.19+. `npm run typecheck` uses the native TypeScript 7
+compiler. Nest, ESLint and ts-jest use the compatible TypeScript 6 JavaScript API;
+the two compilers have separate build-info caches. The scoped `nestjs-telegraf`
+overrides keep its existing integration on the project's Nest 12 instance.
 
 ```bash
 $ npm install

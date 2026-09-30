@@ -27,10 +27,7 @@ import type { AdminNotificationDto } from './dto/admin-notification.dto';
 import type { GenerationNotificationDto } from './dto/generation-notification.dto';
 
 type MarkupType =
-	| InlineKeyboardMarkup
-	| ReplyKeyboardMarkup
-	| ReplyKeyboardRemove
-	| ForceReply;
+	InlineKeyboardMarkup | ReplyKeyboardMarkup | ReplyKeyboardRemove | ForceReply;
 
 const TELEGRAM_CAPTION_LIMIT = 1_024;
 const TELEGRAM_MESSAGE_LIMIT = 4_096;

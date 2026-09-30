@@ -1,18 +1,8 @@
 export type MailingStatus =
-	| 'draft'
-	| 'queued'
-	| 'sending'
-	| 'sent'
-	| 'failed'
-	| 'canceled';
+	'draft' | 'queued' | 'sending' | 'sent' | 'failed' | 'canceled';
 
 export type TgParseMode =
-	| 'HTML'
-	| 'Markdown'
-	| 'MarkdownV2'
-	| 'html'
-	| 'markdown'
-	| 'markdownv2';
+	'HTML' | 'Markdown' | 'MarkdownV2' | 'html' | 'markdown' | 'markdownv2';
 
 export type TargetMode = 'all' | 'premium' | 'manual' | 'filter';
 

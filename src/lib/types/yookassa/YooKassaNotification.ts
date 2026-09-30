@@ -1,7 +1,9 @@
-import type { IWebHookEvent } from '@a2seven/yoo-checkout';
-
 export type YooKassaNotification<T> = {
 	type: string;
-	event: IWebHookEvent;
+	event:
+		| 'payment.waiting_for_capture'
+		| 'payment.succeeded'
+		| 'payment.canceled'
+		| 'refund.succeeded';
 	object: T;
 };

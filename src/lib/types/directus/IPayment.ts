@@ -1,11 +1,7 @@
 import { IUserSubscription } from './IUserSubscription';
 
 export type PaymentStatus =
-	| 'pending'
-	| 'succeeded'
-	| 'created'
-	| 'canceled'
-	| 'refunded';
+	'pending' | 'succeeded' | 'created' | 'canceled' | 'refunded';
 
 export interface IPayment {
 	id: number;
