@@ -2,6 +2,30 @@ import { ConfigService } from '@nestjs/config';
 import { StudioAdminUsersService } from './admin-users.service';
 
 describe('StudioAdminUsersService', () => {
+	it('sends an explicit duration to the protected registration-IP endpoint', async () => {
+		const fetchMock = jest
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValue(
+				new Response(JSON.stringify({ blocked: true }), { status: 200 }),
+			);
+		const service = new StudioAdminUsersService(
+			config({
+				NEUROLUV_API_URL: 'https://api.neuroluv.test/v1',
+				PROMPT_BOT_INTERNAL_TOKEN: 's'.repeat(32),
+			}),
+		);
+		await service.blockRegistrationIp(
+			'aad6cb91-05e7-436a-bf39-0de194ac9606',
+			785206267,
+			7,
+		);
+		expect((fetchMock.mock.calls[0]?.[0] as URL).pathname).toBe(
+			'/v1/internal/prompt-bot/users/aad6cb91-05e7-436a-bf39-0de194ac9606/registration-ip/block',
+		);
+		expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+			JSON.stringify({ adminTelegramId: '785206267', durationDays: 7 }),
+		);
+	});
 	afterEach(() => jest.restoreAllMocks());
 
 	it('calls the protected Neuroluv block endpoint with the acting Telegram admin', async () => {

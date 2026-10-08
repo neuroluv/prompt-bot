@@ -1,4 +1,5 @@
 import type { InlineKeyboardMarkup } from 'telegraf/types';
+import { registrationIpCallback } from './admin-ip.keyboard';
 
 export type AdminUserAction = 'block' | 'status' | 'unblock';
 
@@ -24,6 +25,12 @@ export function adminUserKeyboard(input: {
 				},
 			],
 			[{ text: '👤 Открыть в Directus', url: input.directusUrl }],
+			[
+				{
+					text: '🌐 Регистрация по IP',
+					callback_data: registrationIpCallback('menu', input.userId),
+				},
+			],
 		],
 	};
 }

@@ -29,6 +29,15 @@ type MutationResult = StudioAdminUserSummary & {
 	sessionsRestored?: number;
 };
 
+export type StudioRegistrationIpSummary = {
+	available: boolean;
+	blocked: boolean;
+	expiresAt: string | null;
+	accounts: number;
+	blockedAccounts?: number;
+	revokedSessions?: number;
+};
+
 @Injectable()
 export class StudioAdminUsersService {
 	private readonly apiUrl: string;
@@ -62,11 +71,45 @@ export class StudioAdminUsersService {
 		);
 	}
 
+	registrationIp(userId: string): Promise<StudioRegistrationIpSummary> {
+		return this.request(userId, 'GET', 'registration-ip');
+	}
+	blockRegistrationIp(
+		userId: string,
+		adminTelegramId: number,
+		durationDays: number | null,
+	): Promise<StudioRegistrationIpSummary> {
+		return this.request(
+			userId,
+			'POST',
+			'registration-ip/block',
+			adminTelegramId,
+			durationDays,
+		);
+	}
+	unblockRegistrationIp(
+		userId: string,
+		adminTelegramId: number,
+	): Promise<StudioRegistrationIpSummary> {
+		return this.request(
+			userId,
+			'POST',
+			'registration-ip/unblock',
+			adminTelegramId,
+		);
+	}
+
 	private async request<T>(
 		userId: string,
 		method: 'GET' | 'POST',
-		action?: 'block' | 'unblock',
+		action?:
+			| 'block'
+			| 'unblock'
+			| 'registration-ip'
+			| 'registration-ip/block'
+			| 'registration-ip/unblock',
 		adminTelegramId?: number,
+		durationDays?: number | null,
 	): Promise<T> {
 		if (!this.apiUrl || !this.internalToken) {
 			throw new ServiceUnavailableException(
@@ -90,6 +133,7 @@ export class StudioAdminUsersService {
 					? {
 							body: JSON.stringify({
 								adminTelegramId: String(adminTelegramId),
+								...(action === 'registration-ip/block' ? { durationDays } : {}),
 							}),
 						}
 					: {}),

@@ -28,6 +28,11 @@ import {
 	mainKeyboard,
 } from './keyboards';
 import {
+	ipBlockDurationText,
+	registrationIpConfirmKeyboard,
+	registrationIpDurationKeyboard,
+} from './keyboards/admin-ip.keyboard';
+import {
 	adminUserKeyboard,
 	directusUserUrl,
 } from './keyboards/admin-user.keyboard';
@@ -127,6 +132,123 @@ export class BotUpdate {
 				},
 			);
 		}
+	}
+
+	@Action(
+		/^admin_ip:(menu|choose|block|unblock|confirm_unblock):(?:(forever|[0-9]{1,4}):)?([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
+	)
+	async registrationIpAction(@Ctx() ctx: Context) {
+		const adminId = ctx.from?.id;
+		if (!adminId || !this.adminIds.has(adminId)) {
+			await ctx.answerCbQuery('Недостаточно прав', { show_alert: true });
+			return;
+		}
+		const match =
+			/^admin_ip:(menu|choose|block|unblock|confirm_unblock):(?:(forever|[0-9]{1,4}):)?([0-9a-f-]{36})$/i.exec(
+				callbackData(ctx),
+			);
+		if (!match) return;
+		const [, action, duration, userId] = match;
+		if (
+			(action === 'choose' || action === 'block') &&
+			(!duration ||
+				(duration !== 'forever' &&
+					(Number(duration) < 1 || Number(duration) > 3650)))
+		) {
+			await ctx.answerCbQuery('Некорректный срок блокировки', {
+				show_alert: true,
+			});
+			return;
+		}
+		await ctx.answerCbQuery();
+		try {
+			const days = duration === 'forever' ? null : Number(duration);
+			if (action === 'block') {
+				const result = await this.studioAdminUsers.blockRegistrationIp(
+					userId,
+					adminId,
+					days,
+				);
+				await this.ipPanel(
+					ctx,
+					`IP регистрации заблокирован ${ipBlockDurationText(days)}.\nДополнительно заблокировано аккаунтов: ${result.blockedAccounts ?? 0}.\nОтозвано сессий: ${result.revokedSessions ?? 0}.\nНовые регистрации с этого IP блокируются без начисления кредитов.\nАккаунты разблокируются только вручную.`,
+					registrationIpDurationKeyboard(userId, true),
+				);
+				return;
+			}
+			if (action === 'confirm_unblock') {
+				await this.studioAdminUsers.unblockRegistrationIp(userId, adminId);
+				await this.ipPanel(
+					ctx,
+					'Блокировка IP снята. Аккаунты и отозванные сессии не восстановлены.',
+					registrationIpDurationKeyboard(userId, false),
+				);
+				return;
+			}
+			const current = await this.studioAdminUsers.registrationIp(userId);
+			if (!current.available) {
+				await this.ipPanel(
+					ctx,
+					'IP регистрации этого аккаунта не сохранён. Блокировка по последнему входу не применяется: это мог быть другой IP.',
+				);
+				return;
+			}
+			if (action === 'unblock') {
+				await this.ipPanel(
+					ctx,
+					'Снять блокировку IP регистрации? Баны аккаунтов останутся до ручной разблокировки.',
+					registrationIpConfirmKeyboard(userId, undefined),
+				);
+				return;
+			}
+			const status = current.blocked
+				? current.expiresAt
+					? `Заблокирован до ${new Date(current.expiresAt).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} (МСК).`
+					: 'Заблокирован навсегда.'
+				: 'IP сейчас не заблокирован.';
+			const warning = `Аккаунтов с этим IP регистрации: ${current.accounts}.\nОбщий IP может использоваться несколькими людьми. Блокировка затронет вход, генерации и гостевые запуски с этого адреса.\nСвязанные аккаунты будут заблокированы и останутся в бане после окончания срока IP-блокировки.`;
+			if (action === 'choose') {
+				await this.ipPanel(
+					ctx,
+					`Подтвердите блокировку ${ipBlockDurationText(days)}.\n${warning}`,
+					registrationIpConfirmKeyboard(userId, days),
+				);
+			} else {
+				await this.ipPanel(
+					ctx,
+					`${status}\n${warning}\n\nВыберите срок:`,
+					registrationIpDurationKeyboard(userId, current.blocked),
+				);
+			}
+		} catch (error) {
+			this.logger.error(
+				'Не удалось выполнить блокировку IP регистрации',
+				error,
+			);
+			await this.ipPanel(
+				ctx,
+				'Не удалось выполнить действие. Проверьте API и повторите; результат можно проверить кнопкой «Регистрация по IP».',
+			);
+		}
+	}
+
+	private async ipPanel(
+		ctx: Context,
+		text: string,
+		replyMarkup?: ReturnType<typeof registrationIpDurationKeyboard>,
+	) {
+		const message = ctx.callbackQuery?.message;
+		const threadId =
+			message && 'message_thread_id' in message
+				? message.message_thread_id
+				: undefined;
+		const options = {
+			reply_markup: replyMarkup,
+			...(typeof threadId === 'number' ? { message_thread_id: threadId } : {}),
+		};
+		if (ctx.chat) await ctx.reply(text, options);
+		else if (ctx.from)
+			await this.bot.telegram.sendMessage(ctx.from.id, text, options);
 	}
 
 	private async isPreparedStartParam(ctx: Context | SceneContext) {

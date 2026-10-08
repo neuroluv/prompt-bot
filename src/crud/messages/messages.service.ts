@@ -60,7 +60,7 @@ export class MessagesService {
 							'https://admin.neuroluv.ru',
 						notification.action.userId,
 					),
-					status: 'active',
+					status: notification.action.status ?? 'active',
 					userId: notification.action.userId,
 				})
 			: undefined;

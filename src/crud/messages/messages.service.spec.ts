@@ -185,7 +185,7 @@ describe('MessagesService generation notifications', () => {
 				),
 				message_thread_id: 777,
 				reply_markup: expect.objectContaining({
-					inline_keyboard: [
+					inline_keyboard: expect.arrayContaining([
 						[
 							expect.objectContaining({
 								url: 'https://admin.neuroluv.test/admin/content/ai_runs/e345b959-e917-4b00-9e6e-713b7cc58952',
@@ -197,7 +197,7 @@ describe('MessagesService generation notifications', () => {
 									'admin_user:block:b9a69061-d5db-4c79-9496-e36fd3ef3060',
 							}),
 						],
-					],
+					]),
 				}),
 			}),
 		);

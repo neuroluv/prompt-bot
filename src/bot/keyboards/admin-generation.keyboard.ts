@@ -1,4 +1,5 @@
 import type { InlineKeyboardMarkup } from 'telegraf/types';
+import { registrationIpCallback } from './admin-ip.keyboard';
 import { adminUserCallback } from './admin-user.keyboard';
 
 export function adminGenerationKeyboard(input: {
@@ -18,6 +19,12 @@ export function adminGenerationKeyboard(input: {
 				{
 					text: '🚫 Заблокировать пользователя',
 					callback_data: adminUserCallback('block', input.userId),
+				},
+			],
+			[
+				{
+					text: '🌐 Регистрация по IP',
+					callback_data: registrationIpCallback('menu', input.userId),
 				},
 			],
 		],

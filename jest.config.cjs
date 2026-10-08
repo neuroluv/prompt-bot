@@ -16,6 +16,8 @@ module.exports = {
 		],
 	},
 	moduleNameMapper: {
+		'^auth(/.*)?$': '<rootDir>/auth$1',
+		'^cms(/.*)?$': '<rootDir>/cms$1',
 		'^@/(.*)$': '<rootDir>/$1',
 		'^@lib(/.*)?$': '<rootDir>/lib$1',
 		'^@config(/.*)?$': '<rootDir>/config$1',

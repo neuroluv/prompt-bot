@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
 	Equals,
+	IsIn,
 	IsInt,
 	IsOptional,
 	IsString,
@@ -17,6 +18,10 @@ export class AdminNotificationActionDto {
 
 	@IsUUID()
 	userId: string;
+
+	@IsOptional()
+	@IsIn(['active', 'blocked'])
+	status?: 'active' | 'blocked';
 }
 
 export class AdminNotificationDto {
