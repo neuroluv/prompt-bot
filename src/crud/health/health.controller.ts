@@ -6,6 +6,11 @@ export class HealthController {
 	constructor(private readonly polling: BotPollingService) {}
 	@Get()
 	health() {
-		return { ok: true, ts: Date.now(), polling: this.polling.status() };
+		return {
+			ok: true,
+			ts: Date.now(),
+			polling: this.polling.status(),
+			capabilities: { registrationIpBlocking: true },
+		};
 	}
 }
