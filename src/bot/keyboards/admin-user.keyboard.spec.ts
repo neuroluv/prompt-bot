@@ -27,6 +27,10 @@ describe('adminUserKeyboard', () => {
 			text: '👤 Открыть в Directus',
 			url: `https://admin.neuroluv.ru/admin/content/ai_users/${userId}`,
 		});
+		expect(keyboard.inline_keyboard[2]?.[0]).toEqual({
+			text: '🌐 Заблокировать по IP',
+			callback_data: `admin_ip:menu:${userId}`,
+		});
 	});
 
 	it('switches the primary action to unblock for a blocked account', () => {

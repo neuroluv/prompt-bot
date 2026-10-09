@@ -27,7 +27,7 @@ export function adminUserKeyboard(input: {
 			[{ text: '👤 Открыть в Directus', url: input.directusUrl }],
 			[
 				{
-					text: '🌐 Регистрация по IP',
+					text: '🌐 Заблокировать по IP',
 					callback_data: registrationIpCallback('menu', input.userId),
 				},
 			],

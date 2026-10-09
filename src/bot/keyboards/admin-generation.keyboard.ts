@@ -23,7 +23,7 @@ export function adminGenerationKeyboard(input: {
 			],
 			[
 				{
-					text: '🌐 Регистрация по IP',
+					text: '🌐 Заблокировать по IP',
 					callback_data: registrationIpCallback('menu', input.userId),
 				},
 			],

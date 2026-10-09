@@ -21,6 +21,10 @@ describe('adminGenerationKeyboard', () => {
 			text: '🚫 Заблокировать пользователя',
 			callback_data: `admin_user:block:${userId}`,
 		});
+		expect(keyboard.inline_keyboard[2]?.[0]).toEqual({
+			text: '🌐 Заблокировать по IP',
+			callback_data: `admin_ip:menu:${userId}`,
+		});
 	});
 
 	it('normalizes an existing Directus base path', () => {
