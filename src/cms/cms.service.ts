@@ -7,7 +7,7 @@ import {
 	staticToken,
 	type StaticTokenClient,
 } from '@directus/sdk';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { type AxiosInstance } from 'axios';
 import { SystemLoggerService } from 'config';
@@ -15,6 +15,7 @@ import type { DirectusItemResponse, DirectusListResponse } from 'lib/types';
 import type { IUser as IDirectusUser } from 'lib/types/directus';
 import { PromptFile, PromptFileDownload } from 'lib/types/prompt-files';
 import type { IUser } from 'lib/types/user';
+import type { Readable } from 'node:stream';
 import * as qs from 'qs';
 import type { Context } from 'telegraf';
 import { CmsSchema } from './schema';
@@ -23,7 +24,6 @@ import { CmsSchema } from './schema';
 export class CmsService {
 	private CMS_URL: string;
 	private CMS_TOKEN: string;
-	STATIC_FILES_URL: string;
 	http: AxiosInstance;
 	directus: DirectusClient<CmsSchema> &
 		StaticTokenClient<CmsSchema> &
@@ -34,9 +34,10 @@ export class CmsService {
 
 		private readonly logger: SystemLoggerService,
 	) {
-		this.CMS_URL = this.configService.getOrThrow<string>('CMS_URL');
+		this.CMS_URL = this.configService
+			.getOrThrow<string>('CMS_URL')
+			.replace(/\/+$/, '');
 		this.CMS_TOKEN = this.configService.getOrThrow<string>('CMS_TOKEN');
-		this.STATIC_FILES_URL = `${this.CMS_URL}/assets`;
 		this.directus = createDirectus<CmsSchema>(this.CMS_URL)
 			.with(staticToken(this.CMS_TOKEN))
 			.with(rest());
@@ -122,11 +123,35 @@ export class CmsService {
 	}
 
 	async getPromptFileByName(fileName: string): Promise<PromptFile> {
-		const response = await axios.get<{ data: PromptFile[] }>(
-			`${this.CMS_URL}/items/prompt_files?filter[system_name][_eq]=${fileName}&fields=*,file.*`,
+		const response = await this.http.get<{ data: PromptFile[] }>(
+			'/items/prompt_files',
+			{
+				params: {
+					filter: {
+						system_name: { _eq: fileName },
+						status: { _eq: 'published' },
+					},
+					fields: ['id', 'title', 'file.id', 'file.filename_download'],
+					limit: 1,
+				},
+			},
 		);
+		const file = response.data.data[0];
+		if (!file?.file?.id)
+			throw new NotFoundException('Файл для скачивания не найден');
+		return file;
+	}
 
-		return response.data.data[0];
+	async getDirectusFileStream(fileId: string): Promise<Readable> {
+		const response = await this.http.get<Readable>(
+			`/assets/${encodeURIComponent(fileId)}`,
+			{
+				responseType: 'stream',
+				params: { download: 1 },
+				timeout: 60000,
+			},
+		);
+		return response.data;
 	}
 
 	async createPromptFileStats(

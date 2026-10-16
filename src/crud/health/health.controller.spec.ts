@@ -11,7 +11,10 @@ describe('HealthController', () => {
 			ok: true,
 			ts: expect.any(Number),
 			polling: { state: 'running' },
-			capabilities: { registrationIpBlocking: true },
+			capabilities: {
+				registrationIpBlocking: true,
+				directusAuthenticatedDownloads: true,
+			},
 		});
 	});
 });

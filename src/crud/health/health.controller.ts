@@ -10,7 +10,10 @@ export class HealthController {
 			ok: true,
 			ts: Date.now(),
 			polling: this.polling.status(),
-			capabilities: { registrationIpBlocking: true },
+			capabilities: {
+				registrationIpBlocking: true,
+				directusAuthenticatedDownloads: true,
+			},
 		};
 	}
 }

@@ -15,6 +15,7 @@ import {
 	Update,
 } from 'nestjs-telegraf';
 import { performance } from 'node:perf_hooks';
+import type { Readable } from 'node:stream';
 import { Context, Input, Telegraf } from 'telegraf';
 import { SceneContext } from 'telegraf/scenes';
 import {
@@ -354,24 +355,27 @@ export class BotUpdate {
 			parse_mode: 'HTML',
 		});
 
-		const file = Input.fromURLStream(
-			`${this.cms.STATIC_FILES_URL}/${promptFile.file.filename_disk}?download=`,
-			`${promptFile.file.filename_download}`,
-		);
-
-		const msg = await ctx.replyWithDocument(file, {
-			caption: mainMessages.successDownload,
-			parse_mode: 'HTML',
-			reply_markup: {
-				inline_keyboard: goToHomeKeyboard(),
-			},
-		});
-		const seconds = (performance.now() - start) / 1000; // окончение измерения времени загрузки
-		this.logger.log(
-			`[pdf_send] ok chat=${ctx.chat?.id} user=${ctx.from?.id} file="${promptFile.title}" t=${seconds.toFixed(3)}s message_id=${msg.message_id}`,
-		);
-
-		await ctx.deleteMessage(loadingMessage.message_id);
+		let stream: Readable | undefined;
+		try {
+			stream = await this.cms.getDirectusFileStream(promptFile.file.id);
+			const msg = await ctx.replyWithDocument(
+				Input.fromReadableStream(stream, promptFile.file.filename_download),
+				{
+					caption: mainMessages.successDownload,
+					parse_mode: 'HTML',
+					reply_markup: { inline_keyboard: goToHomeKeyboard() },
+				},
+			);
+			const seconds = (performance.now() - start) / 1000;
+			this.logger.log(
+				`[pdf_send] ok chat=${ctx.chat?.id} user=${ctx.from?.id} file="${promptFile.title}" t=${seconds.toFixed(3)}s message_id=${msg.message_id}`,
+			);
+		} finally {
+			stream?.destroy();
+			await ctx.deleteMessage(loadingMessage.message_id).catch(() => {
+				this.logger.error('Не удалось удалить сообщение о загрузке файла');
+			});
+		}
 
 		const user = await this.cms.upsertUser(ctx);
 		await this.cms.createPromptFileStats(

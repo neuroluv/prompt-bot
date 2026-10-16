@@ -33,13 +33,17 @@ Registration alerts are delivered to every private Telegram user ID in
 send `/start` at least once. Account actions call the protected Neuroluv API, so
 `NEUROLUV_API_URL` must include `/v1` and `PROMPT_BOT_INTERNAL_TOKEN` must match
 the value configured on the Neuroluv server. `NEUROLUV_DIRECTUS_URL` is the new
-Neuroluv admin panel used by the button; the legacy `CMS_URL` remains configured
-separately for the bot's existing content.
+Neuroluv admin panel used by the button. `CMS_URL` points to the same Directus
+instance for the bot's content, users and download history. `CMS_TOKEN` belongs
+to a dedicated service policy; downloadable PDFs do not need anonymous access.
+The bot streams originals from `/assets/:id` with authorization and preserves
+their download filenames.
 
 ```dotenv
 TELEGRAM_ADMIN_IDS=123456789,987654321
 NEUROLUV_API_URL=https://api.neuroluv.ru/v1
 NEUROLUV_DIRECTUS_URL=https://admin.neuroluv.ru
+CMS_URL=https://admin.neuroluv.ru
 PROMPT_BOT_INTERNAL_TOKEN=replace-with-the-shared-secret
 ```
 
